@@ -186,7 +186,7 @@ class CyberStormConfig:
 
         # Retrieval configuration using Hugging Face embeddings by default
         self.retrieval_config = RetrievalConfig(
-            search_engine="bing",
+            search_engine="serper",
             vector_store_path="./vector_store",
             embedding_model=self.secrets.get("DEFAULT_EMBEDDING_MODEL", "BAAI/bge-m3"),
             device="cpu",
@@ -359,7 +359,7 @@ class CyberStormConfig:
                 "expertise_focus": ["historical_analysis", "storytelling", "educational_content"],
             },
             "retrieval": {
-                "search_engine": "bing",
+                "search_engine": "serper",
                 "vector_store_type": "local",
                 "embedding_model": "BAAI/bge-m3",
                 "device": "cpu",

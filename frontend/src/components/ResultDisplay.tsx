@@ -3,7 +3,8 @@
  */
 
 import React, { useState } from 'react';
-import { ResearchResult, OutputFormat } from '../types/research';
+import { OutputFormat } from '../types/research';
+import type { ResearchResult } from '../types/research';
 import { 
   DocumentArrowDownIcon, 
   ClipboardDocumentIcon,

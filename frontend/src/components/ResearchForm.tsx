@@ -6,9 +6,9 @@ import React, { useState } from 'react';
 import { 
   OutputFormat, 
   TechnicalDepth, 
-  TargetAudience, 
-  ResearchRequest 
+  TargetAudience
 } from '../types/research';
+import type { ResearchRequest } from '../types/research';
 
 interface ResearchFormProps {
   onSubmit: (request: ResearchRequest) => void;

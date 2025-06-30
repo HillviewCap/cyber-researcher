@@ -2,19 +2,19 @@
  * Main App component for Cyber-Researcher frontend.
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ResearchForm } from './components/ResearchForm';
 import { ProgressTracker } from './components/ProgressTracker';
 import { ResultDisplay } from './components/ResultDisplay';
 import { useWebSocket } from './hooks/useWebSocket';
 import { researchApi } from './services/api';
-import { 
+import type { 
   ResearchRequest, 
   ResearchResult, 
-  ResearchStatus, 
   ProgressUpdate 
 } from './types/research';
+import { ResearchStatus } from './types/research';
 import { 
   ShieldCheckIcon, 
   BeakerIcon,

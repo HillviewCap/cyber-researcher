@@ -3,7 +3,8 @@
  */
 
 import React from 'react';
-import { ResearchStatus, ProgressUpdate } from '../types/research';
+import type { ProgressUpdate } from '../types/research';
+import { ResearchStatus } from '../types/research';
 
 interface ProgressTrackerProps {
   update: ProgressUpdate | null;
@@ -117,48 +118,48 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({ update, isConn
       <div className="border-t pt-4 mt-4">
         <div className="flex justify-between text-xs text-gray-500">
           <div className={`flex flex-col items-center ${
-            [ResearchStatus.INITIALIZING, ResearchStatus.RESEARCHING, ResearchStatus.ANALYZING, 
-             ResearchStatus.GENERATING, ResearchStatus.COMPLETED].includes(status) 
+            ([ResearchStatus.INITIALIZING, ResearchStatus.RESEARCHING, ResearchStatus.ANALYZING, 
+             ResearchStatus.GENERATING, ResearchStatus.COMPLETED] as string[]).includes(status) 
               ? 'text-cyber-600' : ''
           }`}>
             <div className={`w-2 h-2 rounded-full mb-1 ${
-              [ResearchStatus.INITIALIZING, ResearchStatus.RESEARCHING, ResearchStatus.ANALYZING,
-               ResearchStatus.GENERATING, ResearchStatus.COMPLETED].includes(status)
+              ([ResearchStatus.INITIALIZING, ResearchStatus.RESEARCHING, ResearchStatus.ANALYZING,
+               ResearchStatus.GENERATING, ResearchStatus.COMPLETED] as string[]).includes(status)
                 ? 'bg-cyber-600' : 'bg-gray-300'
             }`}></div>
             <span>Init</span>
           </div>
           
           <div className={`flex flex-col items-center ${
-            [ResearchStatus.RESEARCHING, ResearchStatus.ANALYZING, ResearchStatus.GENERATING, 
-             ResearchStatus.COMPLETED].includes(status) 
+            ([ResearchStatus.RESEARCHING, ResearchStatus.ANALYZING, ResearchStatus.GENERATING, 
+             ResearchStatus.COMPLETED] as string[]).includes(status) 
               ? 'text-cyber-600' : ''
           }`}>
             <div className={`w-2 h-2 rounded-full mb-1 ${
-              [ResearchStatus.RESEARCHING, ResearchStatus.ANALYZING, ResearchStatus.GENERATING,
-               ResearchStatus.COMPLETED].includes(status)
+              ([ResearchStatus.RESEARCHING, ResearchStatus.ANALYZING, ResearchStatus.GENERATING,
+               ResearchStatus.COMPLETED] as string[]).includes(status)
                 ? 'bg-cyber-600' : 'bg-gray-300'
             }`}></div>
             <span>Research</span>
           </div>
           
           <div className={`flex flex-col items-center ${
-            [ResearchStatus.ANALYZING, ResearchStatus.GENERATING, ResearchStatus.COMPLETED].includes(status)
+            ([ResearchStatus.ANALYZING, ResearchStatus.GENERATING, ResearchStatus.COMPLETED] as string[]).includes(status)
               ? 'text-cyber-600' : ''
           }`}>
             <div className={`w-2 h-2 rounded-full mb-1 ${
-              [ResearchStatus.ANALYZING, ResearchStatus.GENERATING, ResearchStatus.COMPLETED].includes(status)
+              ([ResearchStatus.ANALYZING, ResearchStatus.GENERATING, ResearchStatus.COMPLETED] as string[]).includes(status)
                 ? 'bg-cyber-600' : 'bg-gray-300'
             }`}></div>
             <span>Analyze</span>
           </div>
           
           <div className={`flex flex-col items-center ${
-            [ResearchStatus.GENERATING, ResearchStatus.COMPLETED].includes(status)
+            ([ResearchStatus.GENERATING, ResearchStatus.COMPLETED] as string[]).includes(status)
               ? 'text-cyber-600' : ''
           }`}>
             <div className={`w-2 h-2 rounded-full mb-1 ${
-              [ResearchStatus.GENERATING, ResearchStatus.COMPLETED].includes(status)
+              ([ResearchStatus.GENERATING, ResearchStatus.COMPLETED] as string[]).includes(status)
                 ? 'bg-cyber-600' : 'bg-gray-300'
             }`}></div>
             <span>Generate</span>

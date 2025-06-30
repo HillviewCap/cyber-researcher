@@ -2,37 +2,41 @@
  * TypeScript types for research API.
  */
 
-export enum OutputFormat {
-  BLOG_POST = 'blog_post',
-  BOOK_CHAPTER = 'book_chapter',
-  RESEARCH_REPORT = 'research_report',
-  INTERACTIVE_SESSION = 'interactive_session',
-}
+export const OutputFormat = {
+  BLOG_POST: 'blog_post',
+  BOOK_CHAPTER: 'book_chapter',
+  RESEARCH_REPORT: 'research_report',
+  INTERACTIVE_SESSION: 'interactive_session',
+} as const;
+export type OutputFormat = typeof OutputFormat[keyof typeof OutputFormat];
 
-export enum TechnicalDepth {
-  BEGINNER = 'beginner',
-  INTERMEDIATE = 'intermediate',
-  ADVANCED = 'advanced',
-  EXPERT = 'expert',
-}
+export const TechnicalDepth = {
+  BEGINNER: 'beginner',
+  INTERMEDIATE: 'intermediate',
+  ADVANCED: 'advanced',
+  EXPERT: 'expert',
+} as const;
+export type TechnicalDepth = typeof TechnicalDepth[keyof typeof TechnicalDepth];
 
-export enum TargetAudience {
-  GENERAL_PUBLIC = 'general_public',
-  CYBERSECURITY_PROFESSIONALS = 'cybersecurity_professionals',
-  STUDENTS = 'students',
-  EXECUTIVES = 'executives',
-  TECHNICAL_TEAMS = 'technical_teams',
-}
+export const TargetAudience = {
+  GENERAL_PUBLIC: 'general_public',
+  CYBERSECURITY_PROFESSIONALS: 'cybersecurity_professionals',
+  STUDENTS: 'students',
+  EXECUTIVES: 'executives',
+  TECHNICAL_TEAMS: 'technical_teams',
+} as const;
+export type TargetAudience = typeof TargetAudience[keyof typeof TargetAudience];
 
-export enum ResearchStatus {
-  PENDING = 'pending',
-  INITIALIZING = 'initializing',
-  RESEARCHING = 'researching',
-  ANALYZING = 'analyzing',
-  GENERATING = 'generating',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-}
+export const ResearchStatus = {
+  PENDING: 'pending',
+  INITIALIZING: 'initializing',
+  RESEARCHING: 'researching',
+  ANALYZING: 'analyzing',
+  GENERATING: 'generating',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+} as const;
+export type ResearchStatus = typeof ResearchStatus[keyof typeof ResearchStatus];
 
 export interface ResearchRequest {
   topic: string;

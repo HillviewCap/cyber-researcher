@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { ProgressUpdate, ResearchStatus } from '../types/research';
+import type { ProgressUpdate } from '../types/research';
 
 interface UseWebSocketOptions {
   onMessage?: (update: ProgressUpdate) => void;
@@ -25,7 +25,7 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
     if (!sessionId) return;
 
     try {
-      const wsUrl = `ws://localhost:8000/api/ws/research/${sessionId}`;
+      const wsUrl = `ws://localhost:8234/api/ws/research/${sessionId}`;
       const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {

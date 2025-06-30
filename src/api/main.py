@@ -13,32 +13,30 @@ from fastapi.responses import JSONResponse
 
 from .routers import research
 from .services.runner_service import RunnerService
+from .dependencies import set_runner_service, get_runner_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global runner service instance
-runner_service = None
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    global runner_service
-    
+
     # Startup
     logger.info("Initializing Cyber-Researcher API...")
     try:
         runner_service = RunnerService()
         await runner_service.initialize()
+        set_runner_service(runner_service)
         logger.info("✓ Cyber-Researcher API initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize API: {e}")
         # Continue with limited functionality
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down Cyber-Researcher API...")
 
@@ -73,9 +71,7 @@ async def root():
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    if runner_service is None:
-        raise HTTPException(status_code=503, detail="Service not initialized")
-    
+    runner_service = get_runner_service()
     status = await runner_service.get_system_status()
     return {"status": "healthy", "system": status}
 
@@ -84,14 +80,4 @@ async def health_check():
 async def global_exception_handler(request, exc):
     """Global exception handler."""
     logger.error(f"Unhandled exception: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"}
-    )
-
-
-def get_runner_service() -> RunnerService:
-    """Get the global runner service instance."""
-    if runner_service is None:
-        raise HTTPException(status_code=503, detail="Service not initialized")
-    return runner_service
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})

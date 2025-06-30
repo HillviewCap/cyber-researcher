@@ -3,7 +3,7 @@
  */
 
 import axios from 'axios';
-import {
+import type {
   ResearchRequest,
   StartResearchResponse,
   ResearchSession,
@@ -11,7 +11,7 @@ import {
   SystemStatus,
 } from '../types/research';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://localhost:8234/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
