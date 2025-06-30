@@ -219,11 +219,11 @@ class ThreatIntelRM(VectorRM):
             payload = hit.payload
 
             info = Information(
-                snippet=payload.get("content", ""),
-                title=payload.get("title", ""),
                 url=payload.get("url", ""),
+                description=payload.get("description", ""),
+                snippets=payload.get("content", ""),
+                title=payload.get("title", ""),
                 meta={
-                    "description": payload.get("description", ""),
                     "date": payload.get("date", ""),
                     "threat_type": payload.get("threat_type", ""),
                     "severity": payload.get("severity", ""),
@@ -271,11 +271,11 @@ class ThreatIntelRM(VectorRM):
             payload = hit.payload
 
             info = Information(
-                snippet=payload.get("content", ""),
-                title=payload.get("title", ""),
                 url=payload.get("url", ""),
+                description=payload.get("description", ""),
+                snippets=payload.get("content", ""),
+                title=payload.get("title", ""),
                 meta={
-                    "description": payload.get("description", ""),
                     "date": payload.get("date", ""),
                     "threat_type": payload.get("threat_type", ""),
                     "severity": payload.get("severity", ""),

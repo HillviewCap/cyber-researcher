@@ -161,11 +161,36 @@ class BaseCyberAgent(ABC):
             return []
 
         try:
-            results = self.retrieval_module.retrieve(query, k=max_results)
-            return [
-                {"content": r.raw_utterance, "url": r.url, "title": getattr(r, "title", "")}
-                for r in results
-            ]
+            # Check if it's a custom retrieval module with retrieve method
+            if hasattr(self.retrieval_module, "retrieve") and callable(
+                getattr(self.retrieval_module, "retrieve")
+            ):
+                results = self.retrieval_module.retrieve(query, k=max_results)
+            else:
+                # For SerperRM and other knowledge_storm RMs, use __call__
+                results = self.retrieval_module(query, k=max_results)
+
+            # Handle different result formats
+            formatted_results = []
+            for r in results:
+                if hasattr(r, "raw_utterance"):
+                    content = r.raw_utterance
+                elif hasattr(r, "snippet"):
+                    content = r.snippet
+                elif hasattr(r, "snippets"):
+                    content = r.snippets
+                else:
+                    content = str(r)
+
+                formatted_results.append(
+                    {
+                        "content": content,
+                        "url": getattr(r, "url", ""),
+                        "title": getattr(r, "title", ""),
+                    }
+                )
+
+            return formatted_results
         except Exception as e:
             print(f"Retrieval error for {self.role.value}: {e}")
             return []
@@ -201,7 +226,8 @@ class BaseCyberAgent(ABC):
             Generated response text
         """
         try:
-            response = self.language_model.generate(
+            # Language models in knowledge_storm use __call__ method
+            response = self.language_model(
                 prompt,
                 temperature=self.config.get("temperature", 0.8),
                 max_tokens=self.config.get("max_tokens", 1000),

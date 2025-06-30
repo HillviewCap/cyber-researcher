@@ -86,6 +86,62 @@ class HistoricalRM(VectorRM):
             "trust",
         ]
 
+    def retrieve(self, query: str, k: Optional[int] = None) -> List[Information]:
+        """
+        Retrieve relevant historical information.
+
+        Args:
+            query: Search query
+            k: Number of results to return
+
+        Returns:
+            List of Information objects
+        """
+        k = k or self.k
+
+        # For now, return mock historical data since we don't have a full vector store setup
+        # In a full implementation, this would work like ThreatIntelRM
+        mock_results = []
+
+        # Generate some relevant mock historical context
+        historical_contexts = [
+            {
+                "title": "Historical Context: Cold War Intelligence Operations",
+                "content": f"During the Cold War era, intelligence operations similar to modern {query} were conducted through various means including human intelligence networks, signal intelligence, and psychological operations.",
+                "url": "https://history.example.com/cold-war-intelligence",
+                "description": "Analysis of Cold War intelligence operations relevant to cybersecurity",
+            },
+            {
+                "title": "Historical Context: World War II Cryptography",
+                "content": f"WWII cryptographic efforts like Enigma breaking show historical precedents for {query} in terms of code-breaking, information security, and strategic deception.",
+                "url": "https://history.example.com/wwii-cryptography",
+                "description": "WWII cryptographic operations and their modern parallels",
+            },
+            {
+                "title": "Historical Context: Industrial Espionage",
+                "content": f"Historical industrial espionage cases provide insights into {query} by showing how information theft and corporate security evolved over time.",
+                "url": "https://history.example.com/industrial-espionage",
+                "description": "Historical cases of industrial espionage and information security",
+            },
+        ]
+
+        for i, ctx in enumerate(historical_contexts[:k]):
+            info = Information(
+                url=ctx["url"],
+                description=ctx["description"],
+                snippets=ctx["content"],
+                title=ctx["title"],
+                meta={
+                    "period": "20th Century",
+                    "relevance_theme": "intelligence_operations",
+                    "category": "historical_parallel",
+                    "score": 0.9 - (i * 0.1),
+                },
+            )
+            mock_results.append(info)
+
+        return mock_results
+
     def find_parallels(self, query: str, k: Optional[int] = None) -> List[Information]:
         """
         Find historical parallels to a cybersecurity concept.
