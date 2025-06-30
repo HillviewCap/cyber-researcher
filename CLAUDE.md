@@ -202,3 +202,7 @@ tests/                    # Comprehensive test suite
   - Git projects
   - AI concepts
   - Dependency versions
+
+## Framework Guidance
+- **STORM Framework Integration**:
+  - This project utilizes the Stanford AI Storm Research Framework. Check for existing functionality within the library and framework before creating any new features.
