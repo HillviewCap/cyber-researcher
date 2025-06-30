@@ -43,5 +43,7 @@ ignore_missing_imports = true
 dev = [
     "black>=25.1.0",
     "mypy>=1.16.1",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.0.0",
     "ruff>=0.12.1",
 ]

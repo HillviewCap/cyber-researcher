@@ -31,6 +31,7 @@ from .agents import (
     ContentType,
 )
 from .rm import ThreatIntelRM, HistoricalRM
+from .templates import BlogPostTemplate, BookChapterTemplate, ResearchReportTemplate
 
 
 @dataclass
@@ -107,6 +108,9 @@ class CyberStormRunner:
 
         # Initialize output directory
         self._init_output_directory()
+
+        # Initialize templates
+        self._init_templates()
 
     def _init_agents(self):
         """Initialize the three main agents."""
@@ -209,6 +213,20 @@ class CyberStormRunner:
         output_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir = output_dir
 
+    def _init_templates(self):
+        """Initialize content templates."""
+        try:
+            self.blog_template = BlogPostTemplate()
+            self.chapter_template = BookChapterTemplate()
+            self.report_template = ResearchReportTemplate()
+            print("✓ Content templates initialized successfully")
+        except Exception as e:
+            print(f"Error initializing templates: {e}")
+            # Fall back to basic templates
+            self.blog_template = None
+            self.chapter_template = None
+            self.report_template = None
+
     def generate_blog_post(self, topic: str, style: str = "educational") -> BlogPost:
         """
         Generate a blog post on a cybersecurity topic.
@@ -237,11 +255,6 @@ class CyberStormRunner:
         threat_analysis = self.threat_researcher.analyze_topic(context)
         historical_analysis = self.historian.analyze_topic(context)
 
-        # Synthesize content
-        content = self._synthesize_blog_content(
-            topic, security_analysis, threat_analysis, historical_analysis
-        )
-
         # Generate metadata
         metadata = {
             "agents_used": ["security_analyst", "threat_researcher", "historian"],
@@ -250,7 +263,36 @@ class CyberStormRunner:
             ),
             "style": style,
             "technical_depth": context.technical_depth,
+            "target_audience": context.target_audience,
         }
+
+        # Synthesize content using professional template
+        if self.blog_template:
+            title = f"Cybersecurity Insights: {topic}"
+            content = self.blog_template.format_blog_post(
+                title=title,
+                topic=topic,
+                security_analysis=security_analysis.content,
+                threat_analysis=threat_analysis.content,
+                historical_analysis=historical_analysis.content,
+                suggestions=security_analysis.suggestions
+                + threat_analysis.suggestions
+                + historical_analysis.suggestions,
+                sources=list(
+                    set(
+                        security_analysis.sources
+                        + threat_analysis.sources
+                        + historical_analysis.sources
+                    )
+                ),
+                metadata=metadata,
+                style=style,
+            )
+        else:
+            # Fallback to basic synthesis
+            content = self._synthesize_blog_content(
+                topic, security_analysis, threat_analysis, historical_analysis
+            )
 
         # Create blog post
         blog_post = BlogPost(
@@ -306,10 +348,37 @@ class CyberStormRunner:
         threat_analysis = self.threat_researcher.analyze_topic(context)
         historical_analysis = self.historian.analyze_topic(context)
 
-        # Synthesize content
-        content = self._synthesize_chapter_content(
-            topic, security_analysis, threat_analysis, historical_analysis, learning_objectives
-        )
+        # Synthesize content using professional template
+        if self.chapter_template:
+            content = self.chapter_template.format_book_chapter(
+                chapter_number=chapter_num,
+                title=f"Chapter {chapter_num}: {topic}",
+                topic=topic,
+                learning_objectives=learning_objectives,
+                security_analysis=security_analysis.content,
+                threat_analysis=threat_analysis.content,
+                historical_analysis=historical_analysis.content,
+                suggestions=security_analysis.suggestions
+                + threat_analysis.suggestions
+                + historical_analysis.suggestions,
+                sources=list(
+                    set(
+                        security_analysis.sources
+                        + threat_analysis.sources
+                        + historical_analysis.sources
+                    )
+                ),
+                metadata={
+                    "agents_used": ["security_analyst", "threat_researcher", "historian"],
+                    "technical_depth": context.technical_depth,
+                    "target_audience": context.target_audience,
+                },
+            )
+        else:
+            # Fallback to basic synthesis
+            content = self._synthesize_chapter_content(
+                topic, security_analysis, threat_analysis, historical_analysis, learning_objectives
+            )
 
         # Generate exercises and key concepts
         exercises = self._generate_exercises(topic, learning_objectives)
@@ -397,6 +466,134 @@ class CyberStormRunner:
             f"✓ Interactive session '{session_id}' created with {len(all_questions)} research questions"
         )
         return session
+
+    def generate_research_report(
+        self, topic: str, report_type: str = "threat_assessment", confidentiality: str = "internal"
+    ) -> Dict[str, Any]:
+        """
+        Generate a professional research report on a cybersecurity topic.
+
+        Args:
+            topic: The cybersecurity topic to analyze
+            report_type: Type of report (threat_assessment, incident_analysis, etc.)
+            confidentiality: Report confidentiality level
+
+        Returns:
+            Dictionary containing the formatted report and metadata
+        """
+        print(f"Generating research report on: {topic}")
+
+        # Create agent context
+        context = AgentContext(
+            topic=topic,
+            content_type=ContentType.RESEARCH_REPORT,
+            target_audience="cybersecurity professionals",
+            technical_depth="advanced",
+            historical_focus=True,
+        )
+
+        # Get analysis from all agents
+        security_analysis = self.security_analyst.analyze_topic(context)
+        threat_analysis = self.threat_researcher.analyze_topic(context)
+        historical_analysis = self.historian.analyze_topic(context)
+
+        # Extract key findings and recommendations
+        key_findings = (
+            security_analysis.suggestions[:3]
+            + threat_analysis.suggestions[:3]
+            + historical_analysis.suggestions[:3]
+        )
+
+        recommendations = (
+            security_analysis.suggestions
+            + threat_analysis.suggestions
+            + historical_analysis.suggestions
+        )
+
+        sources = list(
+            set(security_analysis.sources + threat_analysis.sources + historical_analysis.sources)
+        )
+
+        # Generate professional report using template
+        if self.report_template:
+            from .templates.report_template import ReportMetadata, ReportType, ConfidentialityLevel
+
+            # Map string parameters to enums
+            report_type_enum = getattr(
+                ReportType, report_type.upper(), ReportType.THREAT_ASSESSMENT
+            )
+            confidentiality_enum = getattr(
+                ConfidentialityLevel, confidentiality.upper(), ConfidentialityLevel.INTERNAL
+            )
+
+            metadata = ReportMetadata(
+                title=f"Cybersecurity Analysis: {topic}",
+                report_type=report_type_enum,
+                confidentiality=confidentiality_enum,
+                authors=["Cyber-Researcher Analysis Team"],
+                date=datetime.now().strftime("%Y-%m-%d"),
+                version="1.0",
+                distribution_list=["Security Team", "Executive Leadership"],
+            )
+
+            executive_summary = f"This report provides comprehensive analysis of {topic} from multiple cybersecurity perspectives, integrating historical context with current threat intelligence and defensive security recommendations."
+
+            report_content = self.report_template.format_research_report(
+                metadata=metadata,
+                executive_summary=executive_summary,
+                security_analysis=security_analysis.content,
+                threat_analysis=threat_analysis.content,
+                historical_analysis=historical_analysis.content,
+                key_findings=key_findings,
+                recommendations=recommendations,
+                sources=sources,
+                additional_metadata={
+                    "agents_used": ["security_analyst", "threat_researcher", "historian"],
+                    "technical_depth": context.technical_depth,
+                    "analysis_date": datetime.now().isoformat(),
+                },
+            )
+
+            report_data = {
+                "title": metadata.title,
+                "content": report_content,
+                "metadata": {
+                    "report_type": report_type,
+                    "confidentiality": confidentiality,
+                    "authors": metadata.authors,
+                    "date": metadata.date,
+                    "version": metadata.version,
+                    "key_findings_count": len(key_findings),
+                    "recommendations_count": len(recommendations),
+                    "sources_count": len(sources),
+                },
+                "created_at": datetime.now().isoformat(),
+            }
+        else:
+            # Fallback to basic report structure
+            report_content = self._synthesize_basic_report(
+                topic, security_analysis, threat_analysis, historical_analysis
+            )
+
+            report_data = {
+                "title": f"Cybersecurity Analysis: {topic}",
+                "content": report_content,
+                "metadata": {
+                    "report_type": report_type,
+                    "confidentiality": confidentiality,
+                    "key_findings_count": len(key_findings),
+                    "recommendations_count": len(recommendations),
+                    "sources_count": len(sources),
+                },
+                "created_at": datetime.now().isoformat(),
+            }
+
+        # Save report if configured
+        if self.config.output_config.save_intermediate_results:
+            self._save_research_report(report_data)
+
+        print("✓ Research report generated successfully")
+        return report_data
 
     def ingest_threat_report(self, report_path: str) -> bool:
         """
@@ -614,3 +811,51 @@ class CyberStormRunner:
         }
 
         return status
+
+    def _synthesize_basic_report(
+        self,
+        topic: str,
+        security_analysis: AgentResponse,
+        threat_analysis: AgentResponse,
+        historical_analysis: AgentResponse,
+    ) -> str:
+        """Synthesize a basic research report when templates are not available."""
+
+        content_parts = [
+            f"# Cybersecurity Analysis: {topic}\n",
+            "## Executive Summary\n",
+            f"This report provides comprehensive analysis of {topic} from multiple cybersecurity perspectives.\n",
+            "## Historical Context\n",
+            historical_analysis.content + "\n",
+            "## Security Analysis\n",
+            security_analysis.content + "\n",
+            "## Threat Intelligence\n",
+            threat_analysis.content + "\n",
+            "## Key Findings\n",
+            "### Security Findings\n",
+            "- " + "\n- ".join(security_analysis.suggestions[:3]) + "\n",
+            "### Threat Findings\n",
+            "- " + "\n- ".join(threat_analysis.suggestions[:3]) + "\n",
+            "### Historical Insights\n",
+            "- " + "\n- ".join(historical_analysis.suggestions[:3]) + "\n",
+            "## Recommendations\n",
+            "Based on our analysis, we recommend the following actions:\n",
+            "1. "
+            + "\n2. ".join((security_analysis.suggestions + threat_analysis.suggestions)[:5])
+            + "\n",
+            "## Conclusion\n",
+            f"The analysis of {topic} reveals important implications for cybersecurity strategy and implementation. ",
+            "Organizations should prioritize the recommended actions based on their risk tolerance and operational requirements.",
+        ]
+
+        return "\n".join(content_parts)
+
+    def _save_research_report(self, report_data: Dict[str, Any]):
+        """Save research report to file."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_type = report_data["metadata"].get("report_type", "analysis")
+        filename = f"research_report_{report_type}_{timestamp}.json"
+        filepath = self.output_dir / filename
+
+        with open(filepath, "w") as f:
+            json.dump(report_data, f, indent=2)

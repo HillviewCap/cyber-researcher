@@ -80,6 +80,7 @@ src/cyber_storm/           # Main package
 ### Requirements
 - **Python 3.11+** required
 - **API Keys**: Anthropic API key required in `secrets.toml` (Claude models are now default)
+- **Search API**: Serper API key recommended (2500 free queries/month)
 - **Optional**: OpenAI API key for fallback, Bing Search API for web retrieval, Qdrant for cloud vector store
 
 ### Configuration Files
@@ -93,7 +94,14 @@ src/cyber_storm/           # Main package
   - Threat Researcher: `claude-3-sonnet-20240229` 
   - Historian: `claude-3-opus-20240229`
 - **Embeddings**: Hugging Face BAAI/bge-m3 model (default)
+- **Search Engine**: Serper.dev (recommended), with fallback to Bing, DuckDuckGo, etc.
 - **Fallback**: OpenAI GPT models available for compatibility
+
+### Development Notes
+- **Git Workflow**: Create feature branches from DEVELOPMENT, merge when tasks complete
+- **Testing**: No automated tests yet - validate manually using examples
+- **Code Style**: Black formatting (line-length 100), Ruff linting, MyPy type checking
+- **Error Handling**: Check for missing API keys and configuration issues on startup
 
 ### Recent Updates
 - ✅ Claude integration completed (Phase 2)
