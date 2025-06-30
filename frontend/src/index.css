@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom CSS for Cyber-Researcher */
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-cyber-600 text-white px-4 py-2 rounded-lg hover:bg-cyber-700 focus:ring-2 focus:ring-cyber-500 focus:ring-offset-2 transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-300 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+  }
+  
+  .input-field {
+    @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-cyber-500 focus:ring-cyber-500;
+  }
+  
+  .textarea-field {
+    @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-cyber-500 focus:ring-cyber-500 resize-vertical;
+  }
+}

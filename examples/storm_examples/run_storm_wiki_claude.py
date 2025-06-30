@@ -114,7 +114,7 @@ def main(args):
 
     runner = STORMWikiRunner(engine_args, lm_configs, rm)
 
-    topic = input("Topic: ")
+    topic = args.topic if args.topic else input("Topic: ")
     runner.run(
         topic=topic,
         do_research=args.do_research,
@@ -148,6 +148,11 @@ if __name__ == "__main__":
         type=str,
         choices=["bing", "you", "brave", "serper", "duckduckgo", "tavily", "searxng"],
         help="The search engine API to use for retrieving information.",
+    )
+    parser.add_argument(
+        "--topic",
+        type=str,
+        help="The topic to research and write about.",
     )
     # stage of the pipeline
     parser.add_argument(
