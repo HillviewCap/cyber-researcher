@@ -206,3 +206,4 @@ tests/                    # Comprehensive test suite
 ## Framework Guidance
 - **STORM Framework Integration**:
   - This project utilizes the Stanford AI Storm Research Framework. Check for existing functionality within the library and framework before creating any new features.
+  - The storm repository can be referenced here for additional documentation and modules references: https://github.com/stanford-oval/storm
