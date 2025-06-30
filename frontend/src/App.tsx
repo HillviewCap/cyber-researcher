@@ -85,11 +85,19 @@ function AppContent() {
   const fetchResult = async (sessionId: string) => {
     try {
       const result = await researchApi.getResearchResult(sessionId);
-      setState(prev => ({
-        ...prev,
-        currentResult: result,
-        isLoading: false,
-      }));
+      if (result) {
+        setState(prev => ({
+          ...prev,
+          currentResult: result,
+          isLoading: false,
+        }));
+      } else {
+        // Result not ready yet, keep checking
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+        }));
+      }
     } catch (error) {
       console.error('Failed to fetch result:', error);
       setState(prev => ({

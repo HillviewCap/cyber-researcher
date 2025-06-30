@@ -48,20 +48,22 @@ class DatabaseService:
         try:
             session_id = str(uuid4())
 
+            from ..database.models import OutputFormatEnum, TargetAudienceEnum, TechnicalDepthEnum, ResearchStatusEnum
+            
             db_session = ResearchSession(
                 session_id=session_id,
                 topic=request.topic,
                 content_directions=request.content_directions,
-                output_format=request.output_format,
-                target_audience=request.target_audience,
-                technical_depth=request.technical_depth,
+                output_format=OutputFormatEnum(request.output_format.value),
+                target_audience=TargetAudienceEnum(request.target_audience.value),
+                technical_depth=TechnicalDepthEnum(request.technical_depth.value),
                 include_historical_context=request.include_historical_context,
                 style=request.style,
                 chapter_number=request.chapter_number,
                 learning_objectives=request.learning_objectives,
                 report_type=request.report_type,
                 confidentiality=request.confidentiality,
-                status=ResearchStatus.PENDING,
+                status=ResearchStatusEnum.PENDING,
                 progress_percentage=0,
                 current_step="initializing",
             )
@@ -132,7 +134,8 @@ class DatabaseService:
             if not db_session:
                 return None
 
-            db_session.status = status
+            from ..database.models import ResearchStatusEnum
+            db_session.status = ResearchStatusEnum(status.value) if hasattr(status, 'value') else ResearchStatusEnum(status)
             db_session.progress_percentage = progress_percentage
             db_session.current_step = current_step
             db_session.error_message = error_message
@@ -185,6 +188,8 @@ class DatabaseService:
         try:
             result_id = str(uuid4())
 
+            from ..database.models import OutputFormatEnum
+            
             db_result = ResearchResult(
                 result_id=result_id,
                 session_id=session_id,
@@ -192,7 +197,7 @@ class DatabaseService:
                 content=content,
                 sources=sources,
                 agent_contributions=agent_contributions,
-                output_format=output_format,
+                output_format=OutputFormatEnum(output_format.value) if hasattr(output_format, 'value') else OutputFormatEnum(output_format),
                 summary=summary,
                 key_concepts=key_concepts,
                 exercises=exercises,

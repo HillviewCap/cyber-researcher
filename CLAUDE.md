@@ -23,12 +23,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run automated test runner**: `uv run python tests/run_tests.py`
 - **Run tests with coverage**: `uv run pytest --cov=src`
 
-### Usage
+### Database Management
+- **Initialize database**: `uv run alembic upgrade head`
+- **Create migration**: `uv run alembic revision --autogenerate -m "description"`
+- **Apply migrations**: `uv run alembic upgrade head`
+- **Downgrade migration**: `uv run alembic downgrade -1`
+
+### Application Startup
+- **API Server**: `uv run python -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8234`
+- **Frontend Development**: `cd frontend && npm install && npm run dev`
+- **Frontend Build**: `cd frontend && npm run build`
+- **Frontend Lint**: `cd frontend && npm run lint`
+
+### Example Usage
 - **Basic example**: `uv run python examples/basic_usage.py`
 - **STORM with Claude**: `uv run python examples/storm_examples/run_storm_wiki_claude.py --output-dir output --retriever serper --do-research --do-generate-outline --do-generate-article --do-polish-article`
 - **STORM with GPT**: `uv run python examples/storm_examples/run_storm_wiki_gpt.py --output-dir output --retriever serper --do-research --do-generate-outline --do-generate-article --do-polish-article`
-- **API Server**: `uv run python -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000`
-- **Frontend Development**: `cd frontend && npm install && npm run dev`
 
 ## Version Control
 
@@ -74,19 +84,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Uses `secrets.toml` for API keys (gitignored)
 - Located in `src/cyber_storm/config/`
 
+**Database Layer**:
+- `SQLAlchemy` - ORM with async support for research metadata persistence
+- `Alembic` - Database migration management
+- SQLite for development, PostgreSQL support for production
+- Located in `src/api/database/`
+
 **API Server**:
-- `FastAPI` - REST API server for web interface integration
-- WebSocket support for real-time research progress
+- `FastAPI` - REST API server with comprehensive CRUD operations
+- WebSocket support for real-time research progress tracking
+- Database integration with persistence layer
 - Located in `src/api/`
 
 **Frontend Interface**:
-- `React/TypeScript` - Web interface for interactive research
+- `React/TypeScript` - Complete research management interface
+- Advanced markdown editing with live preview
+- Search, filtering, and pagination for research results
 - Real-time progress tracking and result display
 - Located in `frontend/`
 
 ### Data Flow
 ```
-User Input → [FastAPI/Web Interface] → CyberStormRunner → Multi-Agent Discourse → Retrieval Modules → Template-Based Synthesis → Educational Enhancement → Output Generation
+Frontend Interface → FastAPI Endpoints → Database Services → CyberStormRunner → Multi-Agent Discourse → Retrieval Modules → Template-Based Synthesis → Educational Enhancement → Database Persistence → Frontend Display
+```
+
+### API Architecture
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   FastAPI       │    │   Database      │
+│   Components    │◄──►│   Routers       │◄──►│   Services      │
+│                 │    │                 │    │                 │
+│ - ResultsList   │    │ - Research CRUD │    │ - SQLAlchemy    │
+│ - MarkdownEdit  │    │ - WebSocket     │    │ - Alembic       │
+│ - SearchFilter  │    │ - Progress      │    │ - Persistence   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ### Key Entry Points
@@ -110,16 +141,33 @@ src/cyber_storm/           # Main package
 
 src/api/                  # FastAPI web server
 ├── main.py              # FastAPI application entry point
+├── database/            # Database models and configuration
+│   ├── models.py        # SQLAlchemy models for persistence
+│   └── base.py          # Database configuration
 ├── routers/             # API route handlers
 ├── models/              # Pydantic data models
 ├── services/            # Business logic services
+│   ├── database_service.py  # Database operations
+│   └── runner_service.py    # Research execution
 └── dependencies.py      # Dependency injection
 
 frontend/                 # React/TypeScript web interface
-├── src/                 # React source code
+├── src/
+│   ├── components/      # React components
+│   │   ├── MarkdownViewer.tsx      # Markdown rendering
+│   │   ├── MarkdownEditor.tsx      # Markdown editing with preview
+│   │   ├── ResearchResultsList.tsx # Results management
+│   │   └── ResearchResultEditor.tsx # Result editing modal
+│   ├── services/        # API integration
+│   ├── hooks/           # React hooks (WebSocket, etc.)
+│   └── types/           # TypeScript type definitions
 ├── package.json         # Node.js dependencies
 ├── vite.config.ts       # Vite build configuration
 └── tsconfig.json        # TypeScript configuration
+
+alembic/                 # Database migrations
+├── versions/            # Migration scripts
+└── env.py              # Migration environment
 
 tests/                    # Comprehensive test suite
 ├── test_agents.py        # Agent unit tests
@@ -140,8 +188,16 @@ tests/                    # Comprehensive test suite
 - **Assessments**: Comprehensive evaluations with 8+ question types (multiple choice, scenarios, practicals)
 - **Interactive Elements**: 8 types including simulations, virtual labs, decision trees, and gamification
 
+### Development Environment
+- **Database URL**: `sqlite:///./cyber_researcher.db`
+- **API Server**: `http://localhost:8234`
+- **API Documentation**: `http://localhost:8234/docs` (Swagger UI)
+- **Frontend**: `http://localhost:5173` (when running)
+- **WebSocket**: `ws://localhost:8234/api/ws/research/{session_id}`
+
 ### Requirements
 - **Python 3.11+** required
+- **Node.js 18+** for frontend development
 - **API Keys**: Anthropic API key required in `secrets.toml` (Claude models are now default)
 - **Search API**: Serper API key recommended (2500 free queries/month)
 - **Optional**: OpenAI API key for fallback, Bing Search API for web retrieval, Qdrant for cloud vector store
@@ -149,6 +205,8 @@ tests/                    # Comprehensive test suite
 ### Configuration Files
 - `secrets.toml` - API keys and sensitive configuration (gitignored)
 - `pyproject.toml` - Project dependencies and tool configuration
+- `frontend/package.json` - Node.js dependencies and scripts
+- `alembic.ini` - Database migration configuration
 - Uses TOML format for all configuration management
 
 ### Language Model Integration
@@ -180,9 +238,19 @@ tests/                    # Comprehensive test suite
   - Comprehensive test suite with 89 tests
   - Code quality enforcement (Black, Ruff, MyPy)
   - Manual validation of all new modules
-- 🔄 **Phase 5**: Co-STORM Integration (Pending)
+- ✅ **Phase 5**: Database & API Infrastructure (Complete)
+  - SQLAlchemy ORM with async support
+  - Alembic database migrations
+  - FastAPI with comprehensive CRUD operations
+  - WebSocket support for real-time updates
+- ✅ **Phase 6**: Frontend Interface & Markdown Support (Complete)
+  - Complete React/TypeScript interface
+  - Advanced markdown editing with live preview
+  - Research results management with search and filtering
+  - Real-time progress tracking and WebSocket integration
+- 🔄 **Phase 7**: Co-STORM Integration (Pending)
   - Collaborative discourse protocol implementation
-- 📋 **Phase 6**: Example Generation (Pending)
+- 📋 **Phase 8**: Example Generation (Pending)
   - Comprehensive example content across cybersecurity topics
 
 ### Core Features Implemented
@@ -191,6 +259,9 @@ tests/                    # Comprehensive test suite
 - ✅ Configuration management with TOML-based secrets handling
 - ✅ Professional content templates with educational enhancements
 - ✅ Interactive learning elements and comprehensive assessments
+- ✅ Database persistence with research metadata storage
+- ✅ Complete web interface with markdown editing capabilities
+- ✅ Real-time progress tracking via WebSocket
 - ✅ Automated testing infrastructure and quality assurance
 
 ## AI Agent Management
@@ -207,3 +278,25 @@ tests/                    # Comprehensive test suite
 - **STORM Framework Integration**:
   - This project utilizes the Stanford AI Storm Research Framework. Check for existing functionality within the library and framework before creating any new features.
   - The storm repository can be referenced here for additional documentation and modules references: https://github.com/stanford-oval/storm
+
+## Development Workflow
+
+### Full Stack Development
+This is a full-stack application with both backend (Python/FastAPI) and frontend (React/TypeScript) components. Key considerations:
+
+- **Database First**: Always run database migrations before starting the API server
+- **API Port**: The API server runs on port 8234 (not 8000) to avoid conflicts
+- **Frontend Integration**: The frontend expects the API at `http://localhost:8234`
+- **Real-time Features**: WebSocket connections are used for progress tracking during research generation
+
+### Debugging and Development
+- **API Logs**: FastAPI provides detailed request/response logging
+- **Database Inspection**: Use `cyber_researcher.db` with SQLite browser for debugging
+- **Frontend DevTools**: React DevTools and browser console for frontend debugging
+- **WebSocket Testing**: Use browser DevTools Network tab to monitor WebSocket connections
+
+### Key Integration Points
+- **Research Generation**: `CyberStormRunner` in `src/cyber_storm/runner.py` is the main orchestration point
+- **Database Operations**: `DatabaseService` in `src/api/services/database_service.py` handles all persistence
+- **Frontend State**: React components use TanStack Query for server state management
+- **Markdown Processing**: Frontend uses `react-markdown` with syntax highlighting and GitHub-flavored markdown

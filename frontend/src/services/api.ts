@@ -59,9 +59,10 @@ export const researchApi = {
   /**
    * Get the result of a completed research session.
    */
-  getResearchResult: async (sessionId: string): Promise<ResearchResult> => {
-    const response = await apiClient.get<ResearchResult>(`/research/${sessionId}/result`);
-    return response.data;
+  getResearchResult: async (sessionId: string): Promise<ResearchResult | null> => {
+    const response = await apiClient.get<ResearchResult[]>(`/research/${sessionId}/result`);
+    // The API returns an array of results, get the first one
+    return response.data.length > 0 ? response.data[0] : null;
   },
 
   /**

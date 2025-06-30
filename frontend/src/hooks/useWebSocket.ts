@@ -20,9 +20,27 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
+  const optionsRef = useRef(options);
+  
+  // Update options ref when options change
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   const connect = useCallback(() => {
     if (!sessionId) return;
+    
+    // Prevent multiple simultaneous connections
+    if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
+      console.log('WebSocket is already connecting, skipping...');
+      return;
+    }
+    
+    // Close existing connection if any
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log('Closing existing WebSocket connection');
+      wsRef.current.close();
+    }
 
     try {
       const wsUrl = `ws://localhost:8234/api/ws/research/${sessionId}`;
@@ -39,7 +57,7 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
         try {
           const update: ProgressUpdate = JSON.parse(event.data);
           setLastUpdate(update);
-          options.onMessage?.(update);
+          optionsRef.current.onMessage?.(update);
         } catch (err) {
           console.error('Failed to parse WebSocket message:', err);
         }
@@ -50,7 +68,7 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
         setIsConnected(false);
         wsRef.current = null;
         
-        options.onClose?.(event);
+        optionsRef.current.onClose?.(event);
 
         // Attempt to reconnect if not a normal closure
         if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
@@ -67,7 +85,7 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
       ws.onerror = (event) => {
         console.error('WebSocket error:', event);
         setError('WebSocket connection error');
-        options.onError?.(event);
+        optionsRef.current.onError?.(event);
       };
 
       wsRef.current = ws;
@@ -75,7 +93,7 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
       console.error('Failed to create WebSocket connection:', err);
       setError('Failed to establish WebSocket connection');
     }
-  }, [sessionId, options]);
+  }, [sessionId]);
 
   const disconnect = () => {
     if (reconnectTimeoutRef.current) {
@@ -107,7 +125,8 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
     return () => {
       disconnect();
     };
-  }, [sessionId, connect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   return {
     isConnected,

@@ -196,7 +196,7 @@ async def run_research_task(
         )
 
         # Perform research based on output format
-        if request.output_format == "blog_post":
+        if request.output_format.value == "blog_post":
             result = await runner_service.generate_blog_post(
                 topic=request.topic,
                 content_directions=request.content_directions,
@@ -209,7 +209,7 @@ async def run_research_task(
                 ),
             )
 
-        elif request.output_format == "book_chapter":
+        elif request.output_format.value == "book_chapter":
             result = await runner_service.generate_book_chapter(
                 topic=request.topic,
                 content_directions=request.content_directions,
@@ -223,7 +223,7 @@ async def run_research_task(
                 ),
             )
 
-        elif request.output_format == "research_report":
+        elif request.output_format.value == "research_report":
             result = await runner_service.generate_research_report(
                 topic=request.topic,
                 content_directions=request.content_directions,
@@ -237,7 +237,7 @@ async def run_research_task(
                 ),
             )
 
-        elif request.output_format == "interactive_session":
+        elif request.output_format.value == "interactive_session":
             result = await runner_service.create_interactive_session(
                 topic=request.topic,
                 content_directions=request.content_directions,

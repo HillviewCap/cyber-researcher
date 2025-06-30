@@ -32,7 +32,18 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, onDownload
   const [activeTab, setActiveTab] = useState<'content' | 'metadata' | 'sources'>('content');
   const [copied, setCopied] = useState(false);
 
-  const FormatIcon = formatIcons[result.output_format];
+  // Guard clause for incomplete or missing result
+  if (!result || !result.content) {
+    return (
+      <div className="card">
+        <div className="text-center py-8">
+          <p className="text-gray-500">No content available yet...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const FormatIcon = formatIcons[result.output_format] || DocumentTextIcon;
 
   const handleCopyToClipboard = async () => {
     try {
@@ -49,6 +60,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, onDownload
   };
 
   const getWordCount = () => {
+    if (!result?.content) return 0;
     return result.content.split(/\s+/).length;
   };
 
