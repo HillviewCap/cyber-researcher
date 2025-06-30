@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { OutputFormat } from '../types/research';
 import type { ResearchResult } from '../types/research';
+import { MarkdownViewer } from './MarkdownViewer';
 import { 
   DocumentArrowDownIcon, 
   ClipboardDocumentIcon,
@@ -180,10 +181,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, onDownload
 
       {/* Tab Content */}
       {activeTab === 'content' && (
-        <div className="prose prose-gray max-w-none">
-          <div className="whitespace-pre-wrap font-mono text-sm bg-gray-50 rounded-lg p-4 overflow-auto max-h-96">
-            {result.content}
-          </div>
+        <div className="max-h-96 overflow-auto">
+          <MarkdownViewer content={result.content} />
         </div>
       )}
 

@@ -2,7 +2,7 @@
  * WebSocket hook for real-time progress updates.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ProgressUpdate } from '../types/research';
 
 interface UseWebSocketOptions {
@@ -21,7 +21,7 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
-  const connect = () => {
+  const connect = useCallback(() => {
     if (!sessionId) return;
 
     try {
@@ -75,7 +75,7 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
       console.error('Failed to create WebSocket connection:', err);
       setError('Failed to establish WebSocket connection');
     }
-  };
+  }, [sessionId, options]);
 
   const disconnect = () => {
     if (reconnectTimeoutRef.current) {
@@ -93,7 +93,7 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
     setError(null);
   };
 
-  const sendMessage = (message: any) => {
+  const sendMessage = (message: Record<string, unknown>) => {
     if (wsRef.current && isConnected) {
       wsRef.current.send(JSON.stringify(message));
     }
@@ -107,7 +107,7 @@ export const useWebSocket = (sessionId: string | null, options: UseWebSocketOpti
     return () => {
       disconnect();
     };
-  }, [sessionId]);
+  }, [sessionId, connect]);
 
   return {
     isConnected,

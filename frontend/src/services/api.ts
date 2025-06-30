@@ -88,4 +88,74 @@ export const researchApi = {
   },
 };
 
+// Research Results Management API
+export interface ResearchResultsListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  output_format?: string;
+  sort_by?: 'created_at' | 'title' | 'updated_at';
+  sort_order?: 'asc' | 'desc';
+}
+
+export interface ResearchResultsListResponse {
+  results: ResearchResult[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface UpdateResearchResultRequest {
+  title?: string;
+  content?: string;
+  metadata?: Record<string, unknown>;
+  tags?: string[];
+  summary?: string;
+}
+
+export const researchResultsApi = {
+  /**
+   * List research results with pagination and filtering.
+   */
+  listResults: async (params: ResearchResultsListParams = {}): Promise<ResearchResultsListResponse> => {
+    const queryParams = new URLSearchParams();
+    
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.search) queryParams.append('search', params.search);
+    if (params.output_format) queryParams.append('output_format', params.output_format);
+    if (params.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params.sort_order) queryParams.append('sort_order', params.sort_order);
+
+    const response = await apiClient.get<ResearchResultsListResponse>(
+      `/research/results?${queryParams.toString()}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Get a specific research result by ID.
+   */
+  getResult: async (resultId: string): Promise<ResearchResult> => {
+    const response = await apiClient.get<ResearchResult>(`/research/results/${resultId}`);
+    return response.data;
+  },
+
+  /**
+   * Update a research result.
+   */
+  updateResult: async (resultId: string, data: UpdateResearchResultRequest): Promise<ResearchResult> => {
+    const response = await apiClient.put<ResearchResult>(`/research/results/${resultId}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete a research result.
+   */
+  deleteResult: async (resultId: string): Promise<void> => {
+    await apiClient.delete(`/research/results/${resultId}`);
+  },
+};
+
 export default apiClient;

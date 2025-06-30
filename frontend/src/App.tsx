@@ -7,6 +7,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ResearchForm } from './components/ResearchForm';
 import { ProgressTracker } from './components/ProgressTracker';
 import { ResultDisplay } from './components/ResultDisplay';
+import { ResearchResultsList } from './components/ResearchResultsList';
+import { ResearchResultEditor } from './components/ResearchResultEditor';
 import { useWebSocket } from './hooks/useWebSocket';
 import { researchApi } from './services/api';
 import type { 
@@ -18,7 +20,9 @@ import { ResearchStatus } from './types/research';
 import { 
   ShieldCheckIcon, 
   BeakerIcon,
-  DocumentTextIcon 
+  DocumentTextIcon,
+  PlusIcon,
+  FolderOpenIcon
 } from '@heroicons/react/24/outline';
 
 // Create a client
@@ -36,6 +40,9 @@ interface AppState {
   currentResult: ResearchResult | null;
   isLoading: boolean;
   error: string | null;
+  currentView: 'research' | 'results';
+  selectedResult: ResearchResult | null;
+  isEditing: boolean;
 }
 
 function AppContent() {
@@ -44,6 +51,9 @@ function AppContent() {
     currentResult: null,
     isLoading: false,
     error: null,
+    currentView: 'research',
+    selectedResult: null,
+    isEditing: false,
   });
 
   const [progressUpdate, setProgressUpdate] = useState<ProgressUpdate | null>(null);
@@ -160,8 +170,54 @@ function AppContent() {
       currentResult: null,
       isLoading: false,
       error: null,
+      currentView: 'research',
+      selectedResult: null,
+      isEditing: false,
     });
     setProgressUpdate(null);
+  };
+
+  // Navigation handlers
+  const handleViewChange = (view: 'research' | 'results') => {
+    setState(prev => ({
+      ...prev,
+      currentView: view,
+      selectedResult: null,
+      isEditing: false,
+    }));
+  };
+
+  // Result management handlers
+  const handleViewResult = (result: ResearchResult) => {
+    setState(prev => ({
+      ...prev,
+      selectedResult: result,
+      isEditing: false,
+    }));
+  };
+
+  const handleEditResult = (result: ResearchResult) => {
+    setState(prev => ({
+      ...prev,
+      selectedResult: result,
+      isEditing: true,
+    }));
+  };
+
+  const handleCloseResultEditor = () => {
+    setState(prev => ({
+      ...prev,
+      selectedResult: null,
+      isEditing: false,
+    }));
+  };
+
+  const handleResultSaved = (updatedResult: ResearchResult) => {
+    setState(prev => ({
+      ...prev,
+      selectedResult: updatedResult,
+      isEditing: false,
+    }));
   };
 
   return (
@@ -178,14 +234,43 @@ function AppContent() {
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <BeakerIcon className="h-4 w-4" />
-                <span>Multi-Agent System</span>
-              </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <DocumentTextIcon className="h-4 w-4" />
-                <span>AI-Powered Research</span>
+            <div className="flex items-center space-x-6">
+              {/* Navigation Tabs */}
+              <nav className="flex space-x-4">
+                <button
+                  onClick={() => handleViewChange('research')}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    state.currentView === 'research'
+                      ? 'bg-cyber-100 text-cyber-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  <span>New Research</span>
+                </button>
+                <button
+                  onClick={() => handleViewChange('results')}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    state.currentView === 'results'
+                      ? 'bg-cyber-100 text-cyber-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <FolderOpenIcon className="h-4 w-4" />
+                  <span>Research Results</span>
+                </button>
+              </nav>
+
+              {/* Status Indicators */}
+              <div className="flex items-center space-x-4 border-l border-gray-200 pl-6">
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <BeakerIcon className="h-4 w-4" />
+                  <span>Multi-Agent System</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <DocumentTextIcon className="h-4 w-4" />
+                  <span>AI-Powered Research</span>
+                </div>
               </div>
             </div>
           </div>
@@ -209,53 +294,75 @@ function AppContent() {
           </div>
         )}
 
-        {/* Research Form */}
-        {!state.currentSessionId && !state.currentResult && (
-          <ResearchForm
-            onSubmit={handleStartResearch}
-            isLoading={state.isLoading}
+        {/* Research View */}
+        {state.currentView === 'research' && (
+          <>
+            {/* Research Form */}
+            {!state.currentSessionId && !state.currentResult && (
+              <ResearchForm
+                onSubmit={handleStartResearch}
+                isLoading={state.isLoading}
+              />
+            )}
+
+            {/* Progress Tracking */}
+            {state.currentSessionId && !state.currentResult && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900">Research in Progress</h2>
+                  <button
+                    onClick={handleNewResearch}
+                    className="btn-secondary"
+                  >
+                    Start New Research
+                  </button>
+                </div>
+                
+                <ProgressTracker
+                  update={progressUpdate}
+                  isConnected={isConnected}
+                  error={wsError}
+                />
+              </div>
+            )}
+
+            {/* Results Display */}
+            {state.currentResult && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900">Research Complete</h2>
+                  <button
+                    onClick={handleNewResearch}
+                    className="btn-primary"
+                  >
+                    Start New Research
+                  </button>
+                </div>
+                
+                <ResultDisplay
+                  result={state.currentResult}
+                  onDownload={handleDownload}
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Results Management View */}
+        {state.currentView === 'results' && (
+          <ResearchResultsList
+            onViewResult={handleViewResult}
+            onEditResult={handleEditResult}
           />
         )}
 
-        {/* Progress Tracking */}
-        {state.currentSessionId && !state.currentResult && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Research in Progress</h2>
-              <button
-                onClick={handleNewResearch}
-                className="btn-secondary"
-              >
-                Start New Research
-              </button>
-            </div>
-            
-            <ProgressTracker
-              update={progressUpdate}
-              isConnected={isConnected}
-              error={wsError}
-            />
-          </div>
-        )}
-
-        {/* Results Display */}
-        {state.currentResult && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Research Complete</h2>
-              <button
-                onClick={handleNewResearch}
-                className="btn-primary"
-              >
-                Start New Research
-              </button>
-            </div>
-            
-            <ResultDisplay
-              result={state.currentResult}
-              onDownload={handleDownload}
-            />
-          </div>
+        {/* Result Editor Modal */}
+        {state.selectedResult && (
+          <ResearchResultEditor
+            result={state.selectedResult}
+            onClose={handleCloseResultEditor}
+            onSave={handleResultSaved}
+          />
         )}
 
         {/* Footer */}

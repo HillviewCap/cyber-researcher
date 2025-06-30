@@ -11,11 +11,19 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-cyber-600 text-white px-4 py-2 rounded-lg hover:bg-cyber-700 focus:ring-2 focus:ring-cyber-500 focus:ring-offset-2 transition-colors;
+    @apply bg-cyber-600 text-white px-4 py-2 rounded-lg hover:bg-cyber-700 focus:ring-2 focus:ring-cyber-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary-sm {
+    @apply bg-cyber-600 text-white px-3 py-1.5 text-sm rounded-lg hover:bg-cyber-700 focus:ring-2 focus:ring-cyber-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-300 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors;
+    @apply bg-gray-200 text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-300 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary-sm {
+    @apply bg-gray-200 text-gray-900 px-3 py-1.5 text-sm rounded-lg hover:bg-gray-300 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .card {

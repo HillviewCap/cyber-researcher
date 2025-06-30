@@ -65,9 +65,9 @@ export interface ResearchResult {
   session_id: string;
   title: string;
   content: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   sources: string[];
-  agent_contributions: Record<string, Record<string, any>>;
+  agent_contributions: Record<string, Record<string, unknown>>;
   created_at: string;
   output_format: OutputFormat;
   summary?: string;
@@ -98,6 +98,6 @@ export interface StartResearchResponse {
 export interface SystemStatus {
   agents: Record<string, string>;
   retrieval: Record<string, string>;
-  configuration: Record<string, any>;
+  configuration: Record<string, unknown>;
   output_directory: string;
 }
