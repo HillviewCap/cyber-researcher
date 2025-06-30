@@ -1,0 +1,39 @@
+[project]
+name = "cyber-researcher"
+version = "0.1.0"
+description = "A narrative-focused cybersecurity research assistant that blends historical stories with cybersecurity concepts"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "knowledge-storm>=1.1.0",
+    "openai>=1.0.0",
+    "qdrant-client>=1.7.0",
+    "pandas>=2.0.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "pypdf>=3.0.0",
+    "aiohttp>=3.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "ARG"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
