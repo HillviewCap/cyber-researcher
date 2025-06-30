@@ -1,0 +1,569 @@
+"""
+Main CyberStormRunner class for Cyber-Researcher.
+
+This module provides the main orchestration class that coordinates
+the various agents and modules to generate cybersecurity narratives.
+"""
+
+import json
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+from dataclasses import dataclass
+from datetime import datetime
+
+from knowledge_storm.rm import BingSearch, DuckDuckGoSearchRM, YouRM, SerperRM, BraveRM, TavilySearchRM
+
+from .config import CyberStormConfig
+from .agents import (
+    SecurityAnalystAgent, ThreatResearcherAgent, HistorianAgent,
+    AgentContext, AgentResponse, ContentType
+)
+from .rm import ThreatIntelRM, HistoricalRM
+
+
+@dataclass
+class BlogPost:
+    """Structure for generated blog posts."""
+    title: str
+    content: str
+    summary: str
+    tags: List[str]
+    sources: List[str]
+    metadata: Dict[str, Any]
+    created_at: str
+
+
+@dataclass
+class BookChapter:
+    """Structure for generated book chapters."""
+    chapter_number: int
+    title: str
+    content: str
+    summary: str
+    learning_objectives: List[str]
+    key_concepts: List[str]
+    exercises: List[str]
+    sources: List[str]
+    metadata: Dict[str, Any]
+    created_at: str
+
+
+@dataclass
+class InteractiveSession:
+    """Structure for interactive research sessions."""
+    topic: str
+    conversation_log: List[Dict[str, Any]]
+    generated_questions: List[str]
+    insights: List[str]
+    session_id: str
+    created_at: str
+
+
+class CyberStormRunner:
+    """
+    Main orchestration class for Cyber-Researcher.
+    
+    This class coordinates the various agents and modules to generate
+    cybersecurity narratives that blend historical context with technical content.
+    """
+    
+    def __init__(self, config: Optional[CyberStormConfig] = None):
+        """
+        Initialize the CyberStormRunner.
+        
+        Args:
+            config: Configuration object. If None, uses default configuration.
+        """
+        self.config = config or CyberStormConfig()
+        
+        # Validate configuration
+        issues = self.config.validate_config()
+        if issues:
+            print("Configuration issues found:")
+            for issue in issues:
+                print(f"  - {issue}")
+            print("Some features may not work properly.")
+        
+        # Initialize agents
+        self._init_agents()
+        
+        # Initialize retrieval modules
+        self._init_retrieval_modules()
+        
+        # Initialize output directory
+        self._init_output_directory()
+    
+    def _init_agents(self):
+        """Initialize the three main agents."""
+        try:
+            # Security Analyst Agent
+            self.security_analyst = SecurityAnalystAgent(
+                language_model=self.config.get_lm_for_agent("security_analyst"),
+                config=self.config.security_analyst_config.lm_config.__dict__
+            )
+            
+            # Threat Researcher Agent
+            self.threat_researcher = ThreatResearcherAgent(
+                language_model=self.config.get_lm_for_agent("threat_researcher"),
+                config=self.config.threat_researcher_config.lm_config.__dict__
+            )
+            
+            # Historian Agent
+            self.historian = HistorianAgent(
+                language_model=self.config.get_lm_for_agent("historian"),
+                config=self.config.historian_config.lm_config.__dict__
+            )
+            
+            print("✓ Agents initialized successfully")
+            
+        except Exception as e:
+            print(f"Error initializing agents: {e}")
+            raise
+    
+    def _init_retrieval_modules(self):
+        """Initialize retrieval modules."""
+        try:
+            # Web search retrieval
+            search_engine = self.config.retrieval_config.search_engine
+            api_key = self.config.get_search_api_key(search_engine)
+            
+            if search_engine == "bing" and api_key:
+                self.web_retrieval = BingSearch(bing_search_api=api_key, k=self.config.retrieval_config.max_results_per_query)
+            elif search_engine == "you" and api_key:
+                self.web_retrieval = YouRM(ydc_api_key=api_key, k=self.config.retrieval_config.max_results_per_query)
+            elif search_engine == "duckduckgo":
+                self.web_retrieval = DuckDuckGoSearchRM(k=self.config.retrieval_config.max_results_per_query)
+            else:
+                print(f"Warning: No valid configuration for search engine '{search_engine}', using DuckDuckGo")
+                self.web_retrieval = DuckDuckGoSearchRM(k=self.config.retrieval_config.max_results_per_query)
+            
+            # Threat intelligence retrieval
+            self.threat_intel_rm = ThreatIntelRM(
+                collection_name="threat_intelligence",
+                embedding_model=self.config.retrieval_config.embedding_model,
+                device=self.config.retrieval_config.device,
+                k=self.config.retrieval_config.max_results_per_query,
+                vector_store_path=self.config.retrieval_config.vector_store_path,
+                qdrant_url=self.config.retrieval_config.qdrant_url,
+                qdrant_api_key=self.config.retrieval_config.qdrant_api_key
+            )
+            
+            # Historical context retrieval
+            self.historical_rm = HistoricalRM(
+                collection_name="historical_context",
+                embedding_model=self.config.retrieval_config.embedding_model,
+                device=self.config.retrieval_config.device,
+                k=self.config.retrieval_config.max_results_per_query,
+                vector_store_path=self.config.retrieval_config.vector_store_path,
+                qdrant_url=self.config.retrieval_config.qdrant_url,
+                qdrant_api_key=self.config.retrieval_config.qdrant_api_key
+            )
+            
+            # Set retrieval modules for agents
+            self.security_analyst.retrieval_module = self.web_retrieval
+            self.threat_researcher.retrieval_module = self.threat_intel_rm
+            self.historian.retrieval_module = self.historical_rm
+            
+            print("✓ Retrieval modules initialized successfully")
+            
+        except Exception as e:
+            print(f"Error initializing retrieval modules: {e}")
+            # Continue with limited functionality
+            self.web_retrieval = None
+            self.threat_intel_rm = None
+            self.historical_rm = None
+    
+    def _init_output_directory(self):
+        """Initialize output directory."""
+        output_dir = Path(self.config.output_config.output_directory)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir = output_dir
+    
+    def generate_blog_post(self, topic: str, style: str = "educational") -> BlogPost:
+        """
+        Generate a blog post on a cybersecurity topic.
+        
+        Args:
+            topic: The cybersecurity topic to write about
+            style: Writing style (educational, technical, narrative)
+            
+        Returns:
+            BlogPost object with generated content
+        """
+        print(f"Generating blog post on: {topic}")
+        
+        # Create agent context
+        context = AgentContext(
+            topic=topic,
+            content_type=ContentType.BLOG_POST,
+            target_audience=self.config.generation_config.default_audience,
+            technical_depth=self.config.generation_config.default_technical_depth,
+            narrative_style=style,
+            historical_focus=self.config.generation_config.include_historical_context
+        )
+        
+        # Get analysis from all agents
+        security_analysis = self.security_analyst.analyze_topic(context)
+        threat_analysis = self.threat_researcher.analyze_topic(context)
+        historical_analysis = self.historian.analyze_topic(context)
+        
+        # Synthesize content
+        content = self._synthesize_blog_content(
+            topic, security_analysis, threat_analysis, historical_analysis
+        )
+        
+        # Generate metadata
+        metadata = {
+            "agents_used": ["security_analyst", "threat_researcher", "historian"],
+            "retrieval_sources": len(security_analysis.sources + threat_analysis.sources + historical_analysis.sources),
+            "style": style,
+            "technical_depth": context.technical_depth
+        }
+        
+        # Create blog post
+        blog_post = BlogPost(
+            title=f"Cybersecurity Insights: {topic}",
+            content=content,
+            summary=self._generate_summary(content),
+            tags=self._extract_tags(topic, content),
+            sources=list(set(security_analysis.sources + threat_analysis.sources + historical_analysis.sources)),
+            metadata=metadata,
+            created_at=datetime.now().isoformat()
+        )
+        
+        # Save blog post
+        if self.config.output_config.save_intermediate_results:
+            self._save_blog_post(blog_post)
+        
+        print("✓ Blog post generated successfully")
+        return blog_post
+    
+    def generate_book_chapter(
+        self, 
+        topic: str, 
+        chapter_num: int, 
+        learning_objectives: List[str]
+    ) -> BookChapter:
+        """
+        Generate a book chapter on a cybersecurity topic.
+        
+        Args:
+            topic: The cybersecurity topic
+            chapter_num: Chapter number
+            learning_objectives: List of learning objectives
+            
+        Returns:
+            BookChapter object with generated content
+        """
+        print(f"Generating book chapter {chapter_num} on: {topic}")
+        
+        # Create agent context
+        context = AgentContext(
+            topic=topic,
+            content_type=ContentType.BOOK_CHAPTER,
+            target_audience=self.config.generation_config.default_audience,
+            technical_depth=self.config.generation_config.default_technical_depth,
+            historical_focus=self.config.generation_config.include_historical_context
+        )
+        
+        # Get analysis from all agents
+        security_analysis = self.security_analyst.analyze_topic(context)
+        threat_analysis = self.threat_researcher.analyze_topic(context)
+        historical_analysis = self.historian.analyze_topic(context)
+        
+        # Synthesize content
+        content = self._synthesize_chapter_content(
+            topic, security_analysis, threat_analysis, historical_analysis, learning_objectives
+        )
+        
+        # Generate exercises and key concepts
+        exercises = self._generate_exercises(topic, learning_objectives)
+        key_concepts = self._extract_key_concepts(content)
+        
+        # Create book chapter
+        book_chapter = BookChapter(
+            chapter_number=chapter_num,
+            title=f"Chapter {chapter_num}: {topic}",
+            content=content,
+            summary=self._generate_summary(content),
+            learning_objectives=learning_objectives,
+            key_concepts=key_concepts,
+            exercises=exercises,
+            sources=list(set(security_analysis.sources + threat_analysis.sources + historical_analysis.sources)),
+            metadata={
+                "agents_used": ["security_analyst", "threat_researcher", "historian"],
+                "word_count": len(content.split()),
+                "technical_depth": context.technical_depth
+            },
+            created_at=datetime.now().isoformat()
+        )
+        
+        # Save chapter
+        if self.config.output_config.save_intermediate_results:
+            self._save_book_chapter(book_chapter)
+        
+        print("✓ Book chapter generated successfully")
+        return book_chapter
+    
+    def interactive_research(self, topic: str) -> InteractiveSession:
+        """
+        Start an interactive research session.
+        
+        Args:
+            topic: The research topic
+            
+        Returns:
+            InteractiveSession object
+        """
+        print(f"Starting interactive research session on: {topic}")
+        
+        session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Create agent context
+        context = AgentContext(
+            topic=topic,
+            content_type=ContentType.RESEARCH_REPORT,
+            target_audience=self.config.generation_config.default_audience
+        )
+        
+        # Generate initial questions from all agents
+        security_questions = self.security_analyst.generate_questions(context)
+        threat_questions = self.threat_researcher.generate_questions(context)
+        historical_questions = self.historian.generate_questions(context)
+        
+        all_questions = security_questions + threat_questions + historical_questions
+        
+        # Initial conversation log
+        conversation_log = [
+            {
+                "timestamp": datetime.now().isoformat(),
+                "type": "initialization",
+                "content": f"Research session started for topic: {topic}",
+                "questions_generated": len(all_questions)
+            }
+        ]
+        
+        session = InteractiveSession(
+            topic=topic,
+            conversation_log=conversation_log,
+            generated_questions=all_questions,
+            insights=[],
+            session_id=session_id,
+            created_at=datetime.now().isoformat()
+        )
+        
+        print(f"✓ Interactive session '{session_id}' created with {len(all_questions)} research questions")
+        return session
+    
+    def ingest_threat_report(self, report_path: str) -> bool:
+        """
+        Add a threat intelligence report to the knowledge base.
+        
+        Args:
+            report_path: Path to the threat report file
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            if self.threat_intel_rm is None:
+                print("Error: Threat intelligence retrieval module not initialized")
+                return False
+                
+            num_reports = self.threat_intel_rm.ingest_threat_reports(report_path)
+            print(f"✓ Successfully ingested {num_reports} threat reports")
+            return True
+            
+        except Exception as e:
+            print(f"Error ingesting threat report: {e}")
+            return False
+    
+    def _synthesize_blog_content(
+        self, 
+        topic: str, 
+        security_analysis: AgentResponse, 
+        threat_analysis: AgentResponse, 
+        historical_analysis: AgentResponse
+    ) -> str:
+        """Synthesize content from all agent analyses into a blog post."""
+        
+        content_parts = [
+            f"# {topic}: A Comprehensive Analysis\n",
+            
+            "## Introduction\n",
+            f"In the ever-evolving landscape of cybersecurity, understanding {topic} requires examining it from multiple perspectives. ",
+            "This analysis combines defensive security insights, threat intelligence, and historical context to provide a comprehensive view.\n",
+            
+            "## Historical Context\n",
+            historical_analysis.content + "\n",
+            
+            "## Security Analysis\n", 
+            security_analysis.content + "\n",
+            
+            "## Threat Intelligence Perspective\n",
+            threat_analysis.content + "\n",
+            
+            "## Key Takeaways\n",
+            "- " + "\n- ".join(security_analysis.suggestions[:3]) + "\n",
+            "- " + "\n- ".join(threat_analysis.suggestions[:3]) + "\n",
+            "- " + "\n- ".join(historical_analysis.suggestions[:3]) + "\n",
+            
+            "## Conclusion\n",
+            f"Understanding {topic} requires a multi-faceted approach that combines technical knowledge, ",
+            "threat awareness, and historical perspective. By learning from the past and staying current with emerging threats, ",
+            "cybersecurity professionals can better protect their organizations and adapt to future challenges."
+        ]
+        
+        return "\n".join(content_parts)
+    
+    def _synthesize_chapter_content(
+        self,
+        topic: str,
+        security_analysis: AgentResponse,
+        threat_analysis: AgentResponse, 
+        historical_analysis: AgentResponse,
+        learning_objectives: List[str]
+    ) -> str:
+        """Synthesize content from all agent analyses into a book chapter."""
+        
+        content_parts = [
+            f"# {topic}\n",
+            
+            "## Learning Objectives\n",
+            "By the end of this chapter, you will be able to:\n",
+            "\n".join([f"- {obj}" for obj in learning_objectives]) + "\n",
+            
+            "## Introduction\n",
+            f"This chapter explores {topic} from multiple perspectives, combining historical insights, ",
+            "defensive security principles, and threat intelligence to provide a comprehensive understanding.\n",
+            
+            "## Historical Foundation\n",
+            historical_analysis.content + "\n",
+            
+            "## Security Architecture and Defense\n",
+            security_analysis.content + "\n",
+            
+            "## Threat Landscape and Intelligence\n",
+            threat_analysis.content + "\n",
+            
+            "## Practical Applications\n",
+            "### Implementation Guidelines\n",
+            "- " + "\n- ".join(security_analysis.suggestions[:5]) + "\n",
+            
+            "### Threat Awareness\n", 
+            "- " + "\n- ".join(threat_analysis.suggestions[:5]) + "\n",
+            
+            "### Historical Lessons\n",
+            "- " + "\n- ".join(historical_analysis.suggestions[:5]) + "\n",
+            
+            "## Chapter Summary\n",
+            f"This chapter has examined {topic} through the lens of history, security, and threat intelligence. ",
+            "The convergence of these perspectives provides the foundation for effective cybersecurity practices."
+        ]
+        
+        return "\n".join(content_parts)
+    
+    def _generate_summary(self, content: str) -> str:
+        """Generate a summary of the content."""
+        # Simple extractive summary - in production, could use a summarization model
+        sentences = content.split('. ')
+        # Take first few sentences from each major section
+        summary_sentences = []
+        for sentence in sentences[:10]:  # Limit to avoid too long summaries
+            if len(sentence) > 50 and any(word in sentence.lower() for word in ['cybersecurity', 'security', 'threat', 'historical']):
+                summary_sentences.append(sentence.strip())
+        
+        return '. '.join(summary_sentences[:3]) + '.'
+    
+    def _extract_tags(self, topic: str, content: str) -> List[str]:
+        """Extract relevant tags from topic and content."""
+        base_tags = ["cybersecurity", "security"]
+        
+        # Add topic-specific tags
+        topic_lower = topic.lower()
+        if "ransomware" in topic_lower:
+            base_tags.extend(["ransomware", "malware", "encryption"])
+        if "phishing" in topic_lower:
+            base_tags.extend(["phishing", "social_engineering", "email_security"])
+        if "apt" in topic_lower or "advanced" in topic_lower:
+            base_tags.extend(["apt", "threat_intelligence", "attribution"])
+        
+        # Add historical tags if historical content is significant
+        if "historical" in content.lower() or "history" in content.lower():
+            base_tags.append("historical_analysis")
+        
+        return list(set(base_tags))
+    
+    def _extract_key_concepts(self, content: str) -> List[str]:
+        """Extract key concepts from content."""
+        # Simple keyword extraction - could be enhanced with NLP
+        key_terms = [
+            "encryption", "authentication", "authorization", "threat_intelligence",
+            "malware", "phishing", "social_engineering", "incident_response",
+            "risk_management", "vulnerability", "exploit", "zero_day"
+        ]
+        
+        found_concepts = []
+        content_lower = content.lower()
+        for term in key_terms:
+            if term.replace('_', ' ') in content_lower or term in content_lower:
+                found_concepts.append(term.replace('_', ' ').title())
+        
+        return found_concepts[:10]  # Limit to top 10
+    
+    def _generate_exercises(self, topic: str, learning_objectives: List[str]) -> List[str]:
+        """Generate practice exercises for the topic."""
+        exercises = [
+            f"Research and document three real-world examples of {topic} incidents from the past five years.",
+            f"Create a threat model for a hypothetical organization vulnerable to {topic}.",
+            f"Design a detection strategy for identifying {topic} in your environment.",
+            "Compare historical and modern approaches to similar security challenges.",
+            "Develop an incident response plan specifically addressing this threat type."
+        ]
+        
+        # Add objective-specific exercises
+        for obj in learning_objectives:
+            if "analyze" in obj.lower():
+                exercises.append(f"Conduct a detailed analysis of how {topic} impacts different industry sectors.")
+            elif "implement" in obj.lower():
+                exercises.append(f"Create an implementation checklist for deploying defenses against {topic}.")
+        
+        return exercises[:8]  # Limit number of exercises
+    
+    def _save_blog_post(self, blog_post: BlogPost):
+        """Save blog post to file."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"blog_post_{timestamp}.json"
+        filepath = self.output_dir / filename
+        
+        with open(filepath, 'w') as f:
+            json.dump(blog_post.__dict__, f, indent=2)
+    
+    def _save_book_chapter(self, chapter: BookChapter):
+        """Save book chapter to file."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"chapter_{chapter.chapter_number}_{timestamp}.json"
+        filepath = self.output_dir / filename
+        
+        with open(filepath, 'w') as f:
+            json.dump(chapter.__dict__, f, indent=2)
+    
+    def get_system_status(self) -> Dict[str, Any]:
+        """Get system status and configuration information."""
+        status = {
+            "agents": {
+                "security_analyst": "initialized" if hasattr(self, 'security_analyst') else "failed",
+                "threat_researcher": "initialized" if hasattr(self, 'threat_researcher') else "failed", 
+                "historian": "initialized" if hasattr(self, 'historian') else "failed"
+            },
+            "retrieval": {
+                "web_search": "initialized" if self.web_retrieval else "failed",
+                "threat_intel": "initialized" if self.threat_intel_rm else "failed",
+                "historical": "initialized" if self.historical_rm else "failed"
+            },
+            "configuration": self.config.to_dict(),
+            "output_directory": str(self.output_dir)
+        }
+        
+        return status
