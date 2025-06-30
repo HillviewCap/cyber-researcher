@@ -8,6 +8,7 @@ Fix the title generation it is too long needs to be shorter based on the content
 - [ ] Integrate the title generation into the research item creation process
 
 Create a page to view and manage research results
+*   Implement the backeend Database prior to frontend development
 
 Add better Markdown support for viewing research results
 - [ ] Implement a Markdown parser to render research results
