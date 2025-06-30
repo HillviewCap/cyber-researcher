@@ -32,6 +32,7 @@ from .agents import (
 )
 from .rm import ThreatIntelRM, HistoricalRM
 from .templates import BlogPostTemplate, BookChapterTemplate, ResearchReportTemplate
+from .modules import title_generator
 
 
 @dataclass
@@ -268,7 +269,35 @@ class CyberStormRunner:
 
         # Synthesize content using professional template
         if self.blog_template:
-            title = f"Cybersecurity Insights: {topic}"
+            # Generate preliminary content for title analysis
+            preliminary_content = self.blog_template.format_blog_post(
+                title=topic,  # Temporary title for content generation
+                topic=topic,
+                security_analysis=security_analysis.content,
+                threat_analysis=threat_analysis.content,
+                historical_analysis=historical_analysis.content,
+                suggestions=security_analysis.suggestions
+                + threat_analysis.suggestions
+                + historical_analysis.suggestions,
+                sources=list(
+                    set(
+                        security_analysis.sources
+                        + threat_analysis.sources
+                        + historical_analysis.sources
+                    )
+                ),
+                metadata=metadata,
+                style=style,
+            )
+
+            # Generate optimized title based on content
+            title = title_generator.generate_title(
+                topic=topic,
+                content=preliminary_content[:1000],  # First 1000 chars for analysis
+                content_type="blog_post",
+            )
+
+            # Re-generate content with optimized title
             content = self.blog_template.format_blog_post(
                 title=title,
                 topic=topic,
@@ -294,9 +323,14 @@ class CyberStormRunner:
                 topic, security_analysis, threat_analysis, historical_analysis
             )
 
+            # Generate title for fallback content
+            title = title_generator.generate_title(
+                topic=topic, content=content[:1000], content_type="blog_post"
+            )
+
         # Create blog post
         blog_post = BlogPost(
-            title=f"Cybersecurity Insights: {topic}",
+            title=title,
             content=content,
             summary=self._generate_summary(content),
             tags=self._extract_tags(topic, content),
@@ -350,9 +384,44 @@ class CyberStormRunner:
 
         # Synthesize content using professional template
         if self.chapter_template:
+            # Generate preliminary content for title analysis
+            preliminary_content = self.chapter_template.format_book_chapter(
+                chapter_number=chapter_num,
+                title=f"Chapter {chapter_num}: {topic}",  # Temporary title
+                topic=topic,
+                learning_objectives=learning_objectives,
+                security_analysis=security_analysis.content,
+                threat_analysis=threat_analysis.content,
+                historical_analysis=historical_analysis.content,
+                suggestions=security_analysis.suggestions
+                + threat_analysis.suggestions
+                + historical_analysis.suggestions,
+                sources=list(
+                    set(
+                        security_analysis.sources
+                        + threat_analysis.sources
+                        + historical_analysis.sources
+                    )
+                ),
+                metadata={
+                    "agents_used": ["security_analyst", "threat_researcher", "historian"],
+                    "technical_depth": context.technical_depth,
+                    "target_audience": context.target_audience,
+                },
+            )
+
+            # Generate optimized title based on content
+            chapter_title = title_generator.generate_title(
+                topic=topic,
+                content=preliminary_content[:1000],
+                content_type="book_chapter",
+                chapter_number=chapter_num,
+            )
+
+            # Re-generate content with optimized title
             content = self.chapter_template.format_book_chapter(
                 chapter_number=chapter_num,
-                title=f"Chapter {chapter_num}: {topic}",
+                title=chapter_title,
                 topic=topic,
                 learning_objectives=learning_objectives,
                 security_analysis=security_analysis.content,
@@ -526,8 +595,19 @@ class CyberStormRunner:
                 ConfidentialityLevel, confidentiality.upper(), ConfidentialityLevel.INTERNAL
             )
 
+            # Generate preliminary content for title analysis
+            preliminary_summary = f"This report provides comprehensive analysis of {topic} from multiple cybersecurity perspectives, integrating historical context with current threat intelligence and defensive security recommendations."
+
+            # Generate optimized title based on content and report type
+            optimized_title = title_generator.generate_title(
+                topic=topic,
+                content=security_analysis.content[:500] + threat_analysis.content[:500],
+                content_type="research_report",
+                report_type=report_type,
+            )
+
             metadata = ReportMetadata(
-                title=f"Cybersecurity Analysis: {topic}",
+                title=optimized_title,
                 report_type=report_type_enum,
                 confidentiality=confidentiality_enum,
                 authors=["Cyber-Researcher Analysis Team"],

@@ -75,6 +75,19 @@ class OutputConfig:
     citation_format: str = "markdown"  # markdown, academic, chicago
 
 
+@dataclass
+class DatabaseConfig:
+    """Configuration for database storage."""
+
+    database_url: str = "sqlite:///./cyber_researcher.db"
+    echo_sql: bool = False
+    pool_size: int = 5
+    max_overflow: int = 10
+    pool_timeout: int = 30
+    pool_recycle: int = 3600
+    enable_logging: bool = True
+
+
 class CyberStormConfig:
     """
     Main configuration class for Cyber-Researcher.
@@ -128,6 +141,7 @@ class CyberStormConfig:
             "QDRANT_API_KEY",
             "QDRANT_URL",
             "HUGGINGFACE_API_KEY",
+            "DATABASE_URL",
         ]
 
         for var in env_vars:
@@ -204,6 +218,12 @@ class CyberStormConfig:
         # Output configuration
         self.output_config = OutputConfig(
             output_directory="./output", save_conversation_logs=True, include_citations=True
+        )
+
+        # Database configuration
+        self.database_config = DatabaseConfig(
+            database_url=self.secrets.get("DATABASE_URL", "sqlite:///./cyber_researcher.db"),
+            echo_sql=False,  # Set to True for SQL debugging
         )
 
     def get_lm_for_agent(self, agent_type: str) -> ClaudeModel:
@@ -320,6 +340,11 @@ class CyberStormConfig:
                 "default_audience": self.generation_config.default_audience,
                 "include_historical_context": self.generation_config.include_historical_context,
             },
+            "database": {
+                "database_url": self.database_config.database_url,
+                "echo_sql": self.database_config.echo_sql,
+                "pool_size": self.database_config.pool_size,
+            },
         }
 
     def save_config(self, output_path: Union[str, Path]):
@@ -377,6 +402,12 @@ class CyberStormConfig:
                 "save_conversation_logs": True,
                 "include_citations": True,
                 "citation_format": "markdown",
+            },
+            "database": {
+                "database_url": "sqlite:///./cyber_researcher.db",
+                "echo_sql": False,
+                "pool_size": 5,
+                "max_overflow": 10,
             },
         }
 

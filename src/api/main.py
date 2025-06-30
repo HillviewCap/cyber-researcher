@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from .routers import research
 from .services.runner_service import RunnerService
 from .dependencies import set_runner_service, get_runner_service
+from .database.base import engine, Base
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +28,12 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Initializing Cyber-Researcher API...")
     try:
+        # Initialize database
+        logger.info("Creating database tables...")
+        Base.metadata.create_all(bind=engine)
+        logger.info("✓ Database initialized successfully")
+
+        # Initialize runner service
         runner_service = RunnerService()
         await runner_service.initialize()
         set_runner_service(runner_service)

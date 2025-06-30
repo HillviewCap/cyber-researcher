@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
 
 from ..models.research import (
     ResearchRequest,
@@ -19,91 +20,100 @@ from ..models.research import (
     ProgressUpdate,
     ResearchResult,
     SystemStatus,
+    ResearchSessionDB,
+    ResearchResultDB,
+    ResearchListResponse,
+    ResearchUpdateRequest,
+    ResearchDeleteResponse,
 )
 from ..services.runner_service import RunnerService
+from ..services.database_service import database_service
+from ..database.base import get_db
 from ..dependencies import get_runner_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# In-memory session storage (in production, use Redis or database)
-active_sessions: Dict[str, ResearchSession] = {}
+# WebSocket connections storage (still in-memory for real-time updates)
 websocket_connections: Dict[str, WebSocket] = {}
 
 
 @router.post("/research/start", response_model=StartResearchResponse)
 async def start_research(
-    request: ResearchRequest, runner_service: RunnerService = Depends(get_runner_service)
+    request: ResearchRequest,
+    runner_service: RunnerService = Depends(get_runner_service),
+    db: Session = Depends(get_db),
 ):
     """Start a new research session."""
 
-    # Generate session ID
-    session_id = str(uuid4())
+    try:
+        # Create session in database
+        db_session = database_service.create_research_session(db, request)
 
-    # Create session
-    session = ResearchSession(
-        session_id=session_id,
-        request=request,
-        status=ResearchStatus.PENDING,
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-    )
+        # Start research task asynchronously
+        asyncio.create_task(run_research_task(db_session.session_id, request, runner_service))
 
-    # Store session
-    active_sessions[session_id] = session
-
-    # Start research task asynchronously
-    asyncio.create_task(run_research_task(session_id, request, runner_service))
-
-    return StartResearchResponse(
-        session_id=session_id,
-        status=ResearchStatus.PENDING,
-        message="Research session started successfully",
-    )
-
-
-@router.get("/research/{session_id}/status", response_model=ResearchSession)
-async def get_research_status(session_id: str):
-    """Get the status of a research session."""
-
-    if session_id not in active_sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    return active_sessions[session_id]
-
-
-@router.get("/research/{session_id}/result", response_model=ResearchResult)
-async def get_research_result(session_id: str):
-    """Get the result of a completed research session."""
-
-    if session_id not in active_sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    session = active_sessions[session_id]
-
-    if session.status != ResearchStatus.COMPLETED:
-        raise HTTPException(
-            status_code=400, detail=f"Research not completed. Current status: {session.status}"
+        return StartResearchResponse(
+            session_id=db_session.session_id,
+            status=ResearchStatus.PENDING,
+            message="Research session started successfully",
         )
 
-    if session.result is None:
-        raise HTTPException(status_code=500, detail="Result not available")
+    except Exception as e:
+        logger.error(f"Error starting research session: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start research session")
 
-    return session.result
+
+@router.get("/research/{session_id}/status", response_model=ResearchSessionDB)
+async def get_research_status(session_id: str, db: Session = Depends(get_db)):
+    """Get the status of a research session."""
+
+    db_session = database_service.get_research_session(db, session_id)
+    if not db_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    return ResearchSessionDB.model_validate(db_session)
 
 
-@router.get("/research/sessions", response_model=List[ResearchSession])
-async def list_research_sessions():
-    """List all research sessions."""
-    return list(active_sessions.values())
+@router.get("/research/{session_id}/result", response_model=List[ResearchResultDB])
+async def get_research_result(session_id: str, db: Session = Depends(get_db)):
+    """Get the results of a research session."""
+
+    # Check if session exists
+    db_session = database_service.get_research_session(db, session_id)
+    if not db_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Get all results for this session
+    results = database_service.get_research_results_by_session(db, session_id)
+
+    return [ResearchResultDB.model_validate(result) for result in results]
+
+
+@router.get("/research/sessions", response_model=List[ResearchSessionDB])
+async def list_research_sessions(
+    page: int = 1,
+    page_size: int = 20,
+    status_filter: ResearchStatus = None,
+    db: Session = Depends(get_db),
+):
+    """List research sessions with pagination."""
+
+    sessions, total_count = database_service.list_research_sessions(
+        db, page=page, page_size=page_size, status_filter=status_filter
+    )
+
+    return [ResearchSessionDB.model_validate(session) for session in sessions]
 
 
 @router.delete("/research/{session_id}")
-async def delete_research_session(session_id: str):
-    """Delete a research session."""
+async def delete_research_session(session_id: str, db: Session = Depends(get_db)):
+    """Delete a research session and its results."""
 
-    if session_id not in active_sessions:
+    # Check if session exists
+    db_session = database_service.get_research_session(db, session_id)
+    if not db_session:
         raise HTTPException(status_code=404, detail="Session not found")
 
     # Close WebSocket connection if exists
@@ -114,10 +124,15 @@ async def delete_research_session(session_id: str):
             pass
         del websocket_connections[session_id]
 
-    # Remove session
-    del active_sessions[session_id]
-
-    return {"message": "Session deleted successfully"}
+    # Delete all results for this session (handled by cascade delete in SQLAlchemy)
+    # Then delete the session
+    try:
+        db.delete(db_session)
+        db.commit()
+        return {"message": "Session deleted successfully"}
+    except Exception as e:
+        logger.error(f"Error deleting session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete session")
 
 
 @router.get("/config", response_model=SystemStatus)
@@ -136,16 +151,22 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     websocket_connections[session_id] = websocket
 
     try:
-        # Send initial status if session exists
-        if session_id in active_sessions:
-            session = active_sessions[session_id]
-            update = ProgressUpdate(
-                session_id=session_id,
-                status=session.status,
-                progress_percentage=session.progress_percentage,
-                current_step=session.current_step,
-            )
-            await websocket.send_json(update.dict())
+        # Send initial status if session exists in database
+        from ..database.base import SessionLocal
+
+        db = SessionLocal()
+        try:
+            db_session = database_service.get_research_session(db, session_id)
+            if db_session:
+                update = ProgressUpdate(
+                    session_id=session_id,
+                    status=db_session.status,
+                    progress_percentage=db_session.progress_percentage,
+                    current_step=db_session.current_step,
+                )
+                await websocket.send_json(update.model_dump())
+        finally:
+            db.close()
 
         # Keep connection alive and listen for client messages
         while True:
@@ -226,30 +247,64 @@ async def run_research_task(
                 ),
             )
 
-        # Update session with result
-        if session_id in active_sessions:
-            session = active_sessions[session_id]
-            session.result = result
-            session.status = ResearchStatus.COMPLETED
-            session.progress_percentage = 100
-            session.current_step = "Research completed successfully"
-            session.updated_at = datetime.now()
+        # Save result to database and update session status
+        from ..database.base import SessionLocal
+
+        db = SessionLocal()
+        try:
+            # Save research result to database
+            result.session_id = session_id  # Make sure session_id is set
+            db_result = database_service.create_research_result(
+                db,
+                session_id=session_id,
+                title=result.title,
+                content=result.content,
+                sources=result.sources,
+                agent_contributions=result.agent_contributions,
+                output_format=result.output_format,
+                summary=result.summary,
+                key_concepts=result.key_concepts,
+                exercises=result.exercises,
+                learning_objectives=result.learning_objectives,
+            )
+
+            # Update session status to completed
+            database_service.update_research_session_status(
+                db, session_id, ResearchStatus.COMPLETED, 100, "Research completed successfully"
+            )
 
             # Send final update via WebSocket
-            await send_websocket_update(session_id, session)
+            await send_websocket_update(
+                session_id, db, ResearchStatus.COMPLETED, 100, "Research completed successfully"
+            )
+
+        except Exception as e:
+            logger.error(f"Error saving research result for session {session_id}: {e}")
+            # Update session with error
+            database_service.update_research_session_status(
+                db, session_id, ResearchStatus.FAILED, 0, "Failed to save research result", str(e)
+            )
+        finally:
+            db.close()
 
     except Exception as e:
         logger.error(f"Research task failed for session {session_id}: {e}")
 
-        # Update session with error
-        if session_id in active_sessions:
-            session = active_sessions[session_id]
-            session.status = ResearchStatus.FAILED
-            session.error_message = str(e)
-            session.updated_at = datetime.now()
+        # Update session with error in database
+        from ..database.base import SessionLocal
+
+        db = SessionLocal()
+        try:
+            database_service.update_research_session_status(
+                db, session_id, ResearchStatus.FAILED, 0, "Research task failed", str(e)
+            )
 
             # Send error update via WebSocket
-            await send_websocket_update(session_id, session)
+            await send_websocket_update(
+                session_id, db, ResearchStatus.FAILED, 0, "Research task failed"
+            )
+        finally:
+            db.close()
 
 
 async def update_session_progress(
@@ -257,20 +312,22 @@ async def update_session_progress(
 ):
     """Update session progress and notify WebSocket clients."""
 
-    if session_id not in active_sessions:
-        return
+    from ..database.base import SessionLocal
 
-    session = active_sessions[session_id]
-    session.status = status
-    session.progress_percentage = progress
-    session.current_step = step
-    session.updated_at = datetime.now()
+    db = SessionLocal()
+    try:
+        # Update session in database
+        database_service.update_research_session_status(db, session_id, status, progress, step)
 
-    # Send update via WebSocket
-    await send_websocket_update(session_id, session)
+        # Send update via WebSocket
+        await send_websocket_update(session_id, db, status, progress, step)
+    finally:
+        db.close()
 
 
-async def send_websocket_update(session_id: str, session: ResearchSession):
+async def send_websocket_update(
+    session_id: str, db: Session, status: ResearchStatus, progress: int, step: str
+):
     """Send progress update via WebSocket."""
 
     if session_id not in websocket_connections:
@@ -281,12 +338,105 @@ async def send_websocket_update(session_id: str, session: ResearchSession):
     try:
         update = ProgressUpdate(
             session_id=session_id,
-            status=session.status,
-            progress_percentage=session.progress_percentage,
-            current_step=session.current_step,
+            status=status,
+            progress_percentage=progress,
+            current_step=step,
         )
-        await websocket.send_json(update.dict())
+        await websocket.send_json(update.model_dump())
     except:
         # Connection might be closed, remove it
         if session_id in websocket_connections:
             del websocket_connections[session_id]
+
+
+# Research Results Management Endpoints
+
+@router.get("/research/results", response_model=ResearchListResponse)
+async def list_research_results(
+    page: int = 1,
+    page_size: int = 20,
+    search_query: str = None,
+    output_format: str = None,
+    db: Session = Depends(get_db),
+):
+    """List research results with pagination and filtering."""
+    
+    try:
+        # Convert string output_format to enum if provided
+        format_filter = None
+        if output_format:
+            try:
+                from ..models.research import OutputFormat
+                format_filter = OutputFormat(output_format)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid output format: {output_format}")
+        
+        results, total_count = database_service.list_research_results(
+            db, 
+            page=page, 
+            page_size=page_size, 
+            search_query=search_query,
+            output_format=format_filter
+        )
+        
+        return ResearchListResponse(
+            total=total_count,
+            page=page,
+            page_size=page_size,
+            items=[ResearchResultDB.model_validate(result) for result in results]
+        )
+    
+    except Exception as e:
+        logger.error(f"Error listing research results: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list research results")
+
+
+@router.get("/research/results/{result_id}", response_model=ResearchResultDB)
+async def get_research_result_by_id(result_id: str, db: Session = Depends(get_db)):
+    """Get a specific research result by ID."""
+    
+    result = database_service.get_research_result(db, result_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Research result not found")
+    
+    return ResearchResultDB.model_validate(result)
+
+
+@router.put("/research/results/{result_id}", response_model=ResearchResultDB)
+async def update_research_result(
+    result_id: str, 
+    update_data: ResearchUpdateRequest,
+    db: Session = Depends(get_db)
+):
+    """Update a research result."""
+    
+    try:
+        updated_result = database_service.update_research_result(db, result_id, update_data)
+        if not updated_result:
+            raise HTTPException(status_code=404, detail="Research result not found")
+        
+        return ResearchResultDB.model_validate(updated_result)
+    
+    except Exception as e:
+        logger.error(f"Error updating research result {result_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update research result")
+
+
+@router.delete("/research/results/{result_id}", response_model=ResearchDeleteResponse)
+async def delete_research_result(result_id: str, db: Session = Depends(get_db)):
+    """Delete a research result."""
+    
+    try:
+        success = database_service.delete_research_result(db, result_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Research result not found")
+        
+        return ResearchDeleteResponse(
+            success=True,
+            message="Research result deleted successfully",
+            deleted_result_id=result_id
+        )
+    
+    except Exception as e:
+        logger.error(f"Error deleting research result {result_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete research result")

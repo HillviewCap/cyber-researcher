@@ -147,3 +147,78 @@ class SystemStatus(BaseModel):
     retrieval: Dict[str, str]
     configuration: Dict[str, Any]
     output_directory: str
+
+
+# Database operation models
+class ResearchSessionDB(BaseModel):
+    """Database representation of research session."""
+
+    model_config = {"from_attributes": True}
+
+    id: int
+    session_id: str
+    topic: str
+    content_directions: str
+    output_format: OutputFormat
+    target_audience: TargetAudience
+    technical_depth: TechnicalDepth
+    include_historical_context: bool
+    style: str
+    chapter_number: Optional[int] = None
+    learning_objectives: Optional[List[str]] = None
+    report_type: Optional[str] = None
+    confidentiality: Optional[str] = None
+    status: ResearchStatus
+    progress_percentage: int
+    current_step: str
+    error_message: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ResearchResultDB(BaseModel):
+    """Database representation of research result."""
+
+    model_config = {"from_attributes": True}
+
+    id: int
+    result_id: str
+    session_id: str
+    title: str
+    content: str
+    sources: Optional[List[str]] = None
+    agent_contributions: Optional[Dict[str, Dict[str, Any]]] = None
+    output_format: OutputFormat
+    summary: Optional[str] = None
+    key_concepts: Optional[List[str]] = None
+    exercises: Optional[List[str]] = None
+    learning_objectives: Optional[List[str]] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ResearchListResponse(BaseModel):
+    """Response model for listing research results."""
+
+    total: int
+    page: int
+    page_size: int
+    items: List[ResearchResultDB]
+
+
+class ResearchUpdateRequest(BaseModel):
+    """Request model for updating research results."""
+
+    title: Optional[str] = None
+    content: Optional[str] = None
+    summary: Optional[str] = None
+    tags: Optional[List[str]] = None
+    key_concepts: Optional[List[str]] = None
+
+
+class ResearchDeleteResponse(BaseModel):
+    """Response model for deleting research results."""
+
+    success: bool
+    message: str
+    deleted_result_id: str
