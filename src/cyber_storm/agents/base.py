@@ -168,7 +168,8 @@ class BaseCyberAgent(ABC):
                 results = self.retrieval_module.retrieve(query, k=max_results)
             else:
                 # For SerperRM and other knowledge_storm RMs, use __call__
-                results = self.retrieval_module(query, k=max_results)
+                # Note: k parameter is set during initialization, not at runtime
+                results = self.retrieval_module(query)
 
             # Handle different result formats
             formatted_results = []

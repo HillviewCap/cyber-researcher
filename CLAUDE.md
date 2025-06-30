@@ -27,6 +27,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Basic example**: `uv run python examples/basic_usage.py`
 - **STORM with Claude**: `uv run python examples/storm_examples/run_storm_wiki_claude.py --output-dir output --retriever serper --do-research --do-generate-outline --do-generate-article --do-polish-article`
 - **STORM with GPT**: `uv run python examples/storm_examples/run_storm_wiki_gpt.py --output-dir output --retriever serper --do-research --do-generate-outline --do-generate-article --do-polish-article`
+- **API Server**: `uv run python -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000`
+- **Frontend Development**: `cd frontend && npm install && npm run dev`
+
+## Version Control
+
+### Git Workflow
+- **Primary Branch**: `main` - Production-ready code
+- **Feature Branches**: Create feature branches from `main`, merge back when complete
+- **Development Flow**: Create feature branches for new work, merge back to `main` after testing
 
 ## Architecture Overview
 
@@ -65,14 +74,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Uses `secrets.toml` for API keys (gitignored)
 - Located in `src/cyber_storm/config/`
 
+**API Server**:
+- `FastAPI` - REST API server for web interface integration
+- WebSocket support for real-time research progress
+- Located in `src/api/`
+
+**Frontend Interface**:
+- `React/TypeScript` - Web interface for interactive research
+- Real-time progress tracking and result display
+- Located in `frontend/`
+
 ### Data Flow
 ```
-User Input → CyberStormRunner → Multi-Agent Discourse → Retrieval Modules → Template-Based Synthesis → Educational Enhancement → Output Generation
+User Input → [FastAPI/Web Interface] → CyberStormRunner → Multi-Agent Discourse → Retrieval Modules → Template-Based Synthesis → Educational Enhancement → Output Generation
 ```
 
 ### Key Entry Points
 - **Main API**: `CyberStormRunner` class
 - **Configuration**: `CyberStormConfig` class  
+- **Web API**: `src/api/main.py` - FastAPI server entry point
+- **Frontend**: `frontend/src/App.tsx` - React application entry point
 - **Basic usage**: `examples/basic_usage.py`
 - **STORM integration**: `examples/storm_examples/`
 
@@ -86,6 +107,19 @@ src/cyber_storm/           # Main package
 ├── modules/              # Educational content modules (formatter, assessments, interactive)
 ├── runner.py             # Main orchestration class
 └── __init__.py          # Package initialization
+
+src/api/                  # FastAPI web server
+├── main.py              # FastAPI application entry point
+├── routers/             # API route handlers
+├── models/              # Pydantic data models
+├── services/            # Business logic services
+└── dependencies.py      # Dependency injection
+
+frontend/                 # React/TypeScript web interface
+├── src/                 # React source code
+├── package.json         # Node.js dependencies
+├── vite.config.ts       # Vite build configuration
+└── tsconfig.json        # TypeScript configuration
 
 tests/                    # Comprehensive test suite
 ├── test_agents.py        # Agent unit tests
@@ -127,11 +161,13 @@ tests/                    # Comprehensive test suite
 - **Fallback**: OpenAI GPT models available for compatibility
 
 ### Development Notes
-- **Git Workflow**: Create feature branches from DEVELOPMENT, merge when tasks complete
+- **Git Workflow**: Create feature branches from `main`, merge when tasks complete
 - **Testing**: Comprehensive test suite with 89 tests covering agents, retrieval, integration, and sample data
 - **Code Style**: Black formatting (line-length 100), Ruff linting, MyPy type checking
 - **Error Handling**: Check for missing API keys and configuration issues on startup
 - **Quality Assurance**: All modules validated through automated testing and manual verification
+- **Frontend**: React with TypeScript, Vite build system, TailwindCSS for styling
+- **API**: FastAPI with WebSocket support for real-time communication
 
 ### Implementation Status
 - ✅ **Phase 1**: Project Foundation & Setup (Complete)
@@ -156,3 +192,13 @@ tests/                    # Comprehensive test suite
 - ✅ Professional content templates with educational enhancements
 - ✅ Interactive learning elements and comprehensive assessments
 - ✅ Automated testing infrastructure and quality assurance
+
+## AI Agent Management
+- **Create agents to complete independent tasks**
+
+## Web Search Capabilities
+- Use web search capability for recent documentation on:
+  - API documentation
+  - Git projects
+  - AI concepts
+  - Dependency versions
