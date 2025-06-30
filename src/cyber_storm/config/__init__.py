@@ -8,17 +8,17 @@ the various settings and parameters of the Cyber-Researcher system.
 from .cyber_storm_config import (
     CyberStormConfig,
     LMConfig,
-    AgentConfig, 
+    AgentConfig,
     RetrievalConfig,
     GenerationConfig,
-    OutputConfig
+    OutputConfig,
 )
 
 __all__ = [
     "CyberStormConfig",
     "LMConfig",
     "AgentConfig",
-    "RetrievalConfig", 
+    "RetrievalConfig",
     "GenerationConfig",
-    "OutputConfig"
+    "OutputConfig",
 ]

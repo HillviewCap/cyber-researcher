@@ -13,7 +13,7 @@ from .base import BaseCyberAgent, AgentRole, AgentContext, AgentResponse
 class SecurityAnalystAgent(BaseCyberAgent):
     """
     Security Analyst Agent specializing in defensive cybersecurity analysis.
-    
+
     This agent brings a technical security perspective focused on:
     - Defensive strategies and controls
     - Vulnerability analysis and mitigation
@@ -21,14 +21,14 @@ class SecurityAnalystAgent(BaseCyberAgent):
     - Incident response and forensics
     - Risk assessment and management
     """
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(AgentRole.SECURITY_ANALYST, *args, **kwargs)
-    
+
     def _get_perspective(self) -> str:
         """Return the Security Analyst's unique perspective."""
         return "defensive security and technical analysis"
-    
+
     def _get_expertise_areas(self) -> List[str]:
         """Return the Security Analyst's areas of expertise."""
         return [
@@ -41,9 +41,9 @@ class SecurityAnalystAgent(BaseCyberAgent):
             "Risk Assessment",
             "Security Controls",
             "Threat Detection",
-            "Compliance and Governance"
+            "Compliance and Governance",
         ]
-    
+
     def _get_response_style(self) -> Dict[str, Any]:
         """Return the Security Analyst's preferred response style."""
         return {
@@ -51,25 +51,25 @@ class SecurityAnalystAgent(BaseCyberAgent):
             "focus": "technical accuracy and practical implementation",
             "citations": "security frameworks and standards",
             "examples": "real-world defensive scenarios",
-            "depth": "technical with practical insights"
+            "depth": "technical with practical insights",
         }
-    
+
     def analyze_topic(self, context: AgentContext) -> AgentResponse:
         """
         Analyze a cybersecurity topic from a defensive security perspective.
-        
+
         Args:
             context: The analysis context
-            
+
         Returns:
             AgentResponse with security analysis
         """
         # Retrieve relevant security information
         security_info = self.retrieve_information(
             f"cybersecurity defense {context.topic} vulnerabilities mitigation",
-            max_results=context.max_sources
+            max_results=context.max_sources,
         )
-        
+
         # Build analysis prompt
         prompt = self._format_prompt(
             """
@@ -97,18 +97,18 @@ class SecurityAnalystAgent(BaseCyberAgent):
             content_type=context.content_type.value,
             audience=context.target_audience,
             depth=context.technical_depth,
-            context_info=self._format_retrieval_context(security_info)
+            context_info=self._format_retrieval_context(security_info),
         )
-        
+
         # Generate analysis
         analysis = self._generate_response(prompt)
-        
+
         # Extract sources
         sources = [item.get("url", "") for item in security_info if item.get("url")]
-        
+
         # Generate suggestions for further exploration
         suggestions = self._generate_security_suggestions(context)
-        
+
         return AgentResponse(
             content=analysis,
             sources=sources,
@@ -118,17 +118,17 @@ class SecurityAnalystAgent(BaseCyberAgent):
                 "agent_role": self.role.value,
                 "analysis_type": "defensive_security",
                 "expertise_areas": self.expertise_areas,
-                "retrieved_sources": len(security_info)
-            }
+                "retrieved_sources": len(security_info),
+            },
         )
-    
+
     def generate_questions(self, context: AgentContext) -> List[str]:
         """
         Generate security-focused questions about a topic.
-        
+
         Args:
             context: The context for question generation
-            
+
         Returns:
             List of security-focused questions
         """
@@ -147,27 +147,27 @@ class SecurityAnalystAgent(BaseCyberAgent):
             
             Format each question on a new line starting with "Q:"
             """,
-            topic=context.topic
+            topic=context.topic,
         )
-        
+
         response = self._generate_response(prompt)
-        
+
         # Extract questions from response
         questions = []
-        for line in response.split('\n'):
-            if line.strip().startswith('Q:'):
+        for line in response.split("\n"):
+            if line.strip().startswith("Q:"):
                 questions.append(line.strip()[2:].strip())
-        
+
         return questions[:10]  # Limit to 10 questions
-    
+
     def review_content(self, content: str, context: AgentContext) -> AgentResponse:
         """
         Review content from a security analyst perspective.
-        
+
         Args:
             content: The content to review
             context: The review context
-            
+
         Returns:
             AgentResponse with security-focused feedback
         """
@@ -189,20 +189,20 @@ class SecurityAnalystAgent(BaseCyberAgent):
             """,
             topic=context.topic,
             content=content,
-            audience=context.target_audience
+            audience=context.target_audience,
         )
-        
+
         feedback = self._generate_response(prompt)
-        
+
         # Generate improvement suggestions
         suggestions = [
             "Add more specific security controls and frameworks",
             "Include vulnerability assessment methodologies",
             "Provide implementation guidance for defensive measures",
             "Reference relevant security standards (NIST, ISO 27001, etc.)",
-            "Include incident response and recovery considerations"
+            "Include incident response and recovery considerations",
         ]
-        
+
         return AgentResponse(
             content=feedback,
             sources=[],
@@ -212,10 +212,14 @@ class SecurityAnalystAgent(BaseCyberAgent):
                 "agent_role": self.role.value,
                 "review_type": "security_analysis",
                 "content_length": len(content),
-                "focus_areas": ["technical_accuracy", "defensive_completeness", "practical_guidance"]
-            }
+                "focus_areas": [
+                    "technical_accuracy",
+                    "defensive_completeness",
+                    "practical_guidance",
+                ],
+            },
         )
-    
+
     def _generate_security_suggestions(self, context: AgentContext) -> List[str]:
         """Generate security-specific suggestions for further exploration."""
         base_suggestions = [
@@ -223,47 +227,51 @@ class SecurityAnalystAgent(BaseCyberAgent):
             f"Analyze defense-in-depth strategies for {context.topic}",
             f"Review NIST Cybersecurity Framework applications",
             f"Investigate threat modeling approaches for {context.topic}",
-            f"Examine security monitoring and detection strategies"
+            f"Examine security monitoring and detection strategies",
         ]
-        
+
         # Add content-type specific suggestions
         if context.content_type.value == "blog_post":
-            base_suggestions.extend([
-                "Include practical security tips for readers",
-                "Add links to security tools and resources",
-                "Provide real-world defensive case studies"
-            ])
+            base_suggestions.extend(
+                [
+                    "Include practical security tips for readers",
+                    "Add links to security tools and resources",
+                    "Provide real-world defensive case studies",
+                ]
+            )
         elif context.content_type.value == "book_chapter":
-            base_suggestions.extend([
-                "Develop hands-on security exercises",
-                "Include comprehensive security checklists",
-                "Add detailed technical implementation guides"
-            ])
-        
+            base_suggestions.extend(
+                [
+                    "Develop hands-on security exercises",
+                    "Include comprehensive security checklists",
+                    "Add detailed technical implementation guides",
+                ]
+            )
+
         return base_suggestions
-    
+
     def _format_retrieval_context(self, retrieved_info: List[Dict[str, Any]]) -> str:
         """Format retrieved information for prompt context."""
         if not retrieved_info:
             return "No additional context retrieved."
-        
+
         formatted = []
         for i, item in enumerate(retrieved_info[:5], 1):  # Limit to top 5
             title = item.get("title", "Unknown Source")
             content = item.get("content", "")[:500]  # Limit content length
             url = item.get("url", "")
-            
+
             formatted.append(f"Source {i} ({title}):\n{content}...\nURL: {url}\n")
-        
+
         return "\n".join(formatted)
-    
+
     def get_security_controls_for_topic(self, topic: str) -> List[str]:
         """
         Get relevant security controls for a specific topic.
-        
+
         Args:
             topic: The cybersecurity topic
-            
+
         Returns:
             List of applicable security controls
         """
@@ -274,7 +282,7 @@ class SecurityAnalystAgent(BaseCyberAgent):
                 "Network Segmentation",
                 "Access Controls",
                 "Email Security",
-                "User Training"
+                "User Training",
             ],
             "phishing": [
                 "Email Filtering",
@@ -282,7 +290,7 @@ class SecurityAnalystAgent(BaseCyberAgent):
                 "Multi-Factor Authentication",
                 "DNS Filtering",
                 "Incident Response",
-                "Threat Intelligence"
+                "Threat Intelligence",
             ],
             "insider threat": [
                 "Privileged Access Management",
@@ -290,16 +298,16 @@ class SecurityAnalystAgent(BaseCyberAgent):
                 "User Behavior Analytics",
                 "Access Reviews",
                 "Segregation of Duties",
-                "Monitoring and Logging"
-            ]
+                "Monitoring and Logging",
+            ],
         }
-        
+
         # Return relevant controls or generic ones
         topic_lower = topic.lower()
         for key, controls in controls_map.items():
             if key in topic_lower:
                 return controls
-        
+
         # Default security controls
         return [
             "Access Controls",
@@ -307,5 +315,5 @@ class SecurityAnalystAgent(BaseCyberAgent):
             "Endpoint Protection",
             "Monitoring and Logging",
             "Incident Response",
-            "Security Awareness"
+            "Security Awareness",
         ]

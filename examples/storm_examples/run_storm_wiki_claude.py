@@ -57,12 +57,8 @@ def main(args):
     question_asker_lm = ClaudeModel(
         model="claude-3-sonnet-20240229", max_tokens=500, **claude_kwargs
     )
-    outline_gen_lm = ClaudeModel(
-        model="claude-3-opus-20240229", max_tokens=400, **claude_kwargs
-    )
-    article_gen_lm = ClaudeModel(
-        model="claude-3-opus-20240229", max_tokens=700, **claude_kwargs
-    )
+    outline_gen_lm = ClaudeModel(model="claude-3-opus-20240229", max_tokens=400, **claude_kwargs)
+    article_gen_lm = ClaudeModel(model="claude-3-opus-20240229", max_tokens=700, **claude_kwargs)
     article_polish_lm = ClaudeModel(
         model="claude-3-opus-20240229", max_tokens=4000, **claude_kwargs
     )
@@ -97,9 +93,7 @@ def main(args):
                 k=engine_args.search_top_k,
             )
         case "duckduckgo":
-            rm = DuckDuckGoSearchRM(
-                k=engine_args.search_top_k, safe_search="On", region="us-en"
-            )
+            rm = DuckDuckGoSearchRM(k=engine_args.search_top_k, safe_search="On", region="us-en")
         case "serper":
             rm = SerperRM(
                 serper_search_api_key=os.getenv("SERPER_API_KEY"),
@@ -112,9 +106,7 @@ def main(args):
                 include_raw_content=True,
             )
         case "searxng":
-            rm = SearXNG(
-                searxng_api_key=os.getenv("SEARXNG_API_KEY"), k=engine_args.search_top_k
-            )
+            rm = SearXNG(searxng_api_key=os.getenv("SEARXNG_API_KEY"), k=engine_args.search_top_k)
         case _:
             raise ValueError(
                 f'Invalid retriever: {args.retriever}. Choose either "bing", "you", "brave", "duckduckgo", "serper", "tavily", or "searxng"'

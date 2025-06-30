@@ -9,9 +9,4 @@ This module contains specialized retrieval modules for cybersecurity narrative g
 from .threat_intel_rm import ThreatIntelRM, ThreatIntelReport
 from .historical_rm import HistoricalRM, HistoricalEvent
 
-__all__ = [
-    "ThreatIntelRM",
-    "ThreatIntelReport", 
-    "HistoricalRM",
-    "HistoricalEvent"
-]
+__all__ = ["ThreatIntelRM", "ThreatIntelReport", "HistoricalRM", "HistoricalEvent"]
