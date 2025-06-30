@@ -41,7 +41,7 @@ class AgentConfig:
 class RetrievalConfig:
     """Configuration for retrieval modules."""
 
-    search_engine: str = "bing"  # bing, you, brave, duckduckgo, etc.
+    search_engine: str = "serper"  # serper, bing, you, brave, duckduckgo, etc.
     vector_store_type: str = "local"  # local, cloud
     vector_store_path: str = "./vector_store"
     embedding_model: str = "BAAI/bge-m3"

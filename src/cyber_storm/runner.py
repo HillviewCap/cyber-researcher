@@ -150,6 +150,11 @@ class CyberStormRunner:
                 self.web_retrieval = YouRM(
                     ydc_api_key=api_key, k=self.config.retrieval_config.max_results_per_query
                 )
+            elif search_engine == "serper" and api_key:
+                self.web_retrieval = SerperRM(
+                    serper_search_api_key=api_key,
+                    k=self.config.retrieval_config.max_results_per_query,
+                )
             elif search_engine == "duckduckgo":
                 self.web_retrieval = DuckDuckGoSearchRM(
                     k=self.config.retrieval_config.max_results_per_query

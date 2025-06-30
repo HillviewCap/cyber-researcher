@@ -23,7 +23,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Usage
 - **Basic example**: `uv run python examples/basic_usage.py`
-- **STORM with GPT**: `uv run python examples/storm_examples/run_storm_wiki_gpt.py --output-dir output --retriever bing --do-research --do-generate-outline --do-generate-article --do-polish-article`
+- **STORM with Claude**: `uv run python examples/storm_examples/run_storm_wiki_claude.py --output-dir output --retriever serper --do-research --do-generate-outline --do-generate-article --do-polish-article`
+- **STORM with GPT**: `uv run python examples/storm_examples/run_storm_wiki_gpt.py --output-dir output --retriever serper --do-research --do-generate-outline --do-generate-article --do-polish-article`
 
 ## Architecture Overview
 
@@ -78,10 +79,24 @@ src/cyber_storm/           # Main package
 
 ### Requirements
 - **Python 3.11+** required
-- **API Keys**: OpenAI API key required in `secrets.toml`
-- **Optional**: Bing Search API for web retrieval, Qdrant for cloud vector store
+- **API Keys**: Anthropic API key required in `secrets.toml` (Claude models are now default)
+- **Optional**: OpenAI API key for fallback, Bing Search API for web retrieval, Qdrant for cloud vector store
 
 ### Configuration Files
 - `secrets.toml` - API keys and sensitive configuration (gitignored)
 - `pyproject.toml` - Project dependencies and tool configuration
 - Uses TOML format for all configuration management
+
+### Language Model Integration
+- **Primary LLM**: Claude models (Anthropic) - integrated as default
+  - Security Analyst: `claude-3-sonnet-20240229`
+  - Threat Researcher: `claude-3-sonnet-20240229` 
+  - Historian: `claude-3-opus-20240229`
+- **Embeddings**: Hugging Face BAAI/bge-m3 model (default)
+- **Fallback**: OpenAI GPT models available for compatibility
+
+### Recent Updates
+- ✅ Claude integration completed (Phase 2)
+- ✅ Multi-agent system with specialized cybersecurity agents
+- ✅ Vector-based retrieval for threat intelligence and historical context
+- ✅ Configuration management with TOML-based secrets handling
