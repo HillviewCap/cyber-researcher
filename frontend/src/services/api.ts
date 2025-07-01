@@ -100,11 +100,11 @@ export interface ResearchResultsListParams {
 }
 
 export interface ResearchResultsListResponse {
-  results: ResearchResult[];
+  items: ResearchResult[];
   total: number;
   page: number;
-  limit: number;
-  total_pages: number;
+  page_size: number;
+  total_pages?: number;
 }
 
 export interface UpdateResearchResultRequest {
@@ -123,8 +123,8 @@ export const researchResultsApi = {
     const queryParams = new URLSearchParams();
     
     if (params.page) queryParams.append('page', params.page.toString());
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.search) queryParams.append('search', params.search);
+    if (params.limit) queryParams.append('page_size', params.limit.toString());
+    if (params.search) queryParams.append('search_query', params.search);
     if (params.output_format) queryParams.append('output_format', params.output_format);
     if (params.sort_by) queryParams.append('sort_by', params.sort_by);
     if (params.sort_order) queryParams.append('sort_order', params.sort_order);

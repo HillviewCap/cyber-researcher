@@ -241,9 +241,9 @@ export const ResearchResultsList: React.FC<ResearchResultsListProps> = ({
             </div>
           ))}
         </div>
-      ) : data && data.results && data.results.length > 0 ? (
+      ) : data && data.items && data.items.length > 0 ? (
         <div className="space-y-4">
-          {data.results.map((result) => {
+          {data.items.map((result) => {
             const FormatIcon = formatIcons[result.output_format];
             
             return (
@@ -345,11 +345,11 @@ export const ResearchResultsList: React.FC<ResearchResultsListProps> = ({
       )}
 
       {/* Pagination */}
-      {data && data.total_pages > 1 && (
+      {data && data.total > data.page_size && (
         <div className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-6 py-3">
           <div className="flex items-center space-x-2 text-sm text-gray-700">
             <span>
-              Showing {((data.page - 1) * data.limit) + 1} to {Math.min(data.page * data.limit, data.total)} of {data.total} results
+              Showing {((data.page - 1) * data.page_size) + 1} to {Math.min(data.page * data.page_size, data.total)} of {data.total} results
             </span>
           </div>
           
@@ -363,9 +363,10 @@ export const ResearchResultsList: React.FC<ResearchResultsListProps> = ({
             </button>
             
             <div className="flex space-x-1">
-              {[...Array(Math.min(5, data.total_pages))].map((_, i) => {
-                const pageNumber = Math.max(1, Math.min(data.total_pages - 4, data.page - 2)) + i;
-                if (pageNumber > data.total_pages) return null;
+              {[...Array(Math.min(5, Math.ceil(data.total / data.page_size)))].map((_, i) => {
+                const totalPages = Math.ceil(data.total / data.page_size);
+                const pageNumber = Math.max(1, Math.min(totalPages - 4, data.page - 2)) + i;
+                if (pageNumber > totalPages) return null;
                 
                 return (
                   <button
@@ -385,7 +386,7 @@ export const ResearchResultsList: React.FC<ResearchResultsListProps> = ({
             
             <button
               onClick={() => handlePageChange(data.page + 1)}
-              disabled={data.page >= data.total_pages}
+              disabled={data.page >= Math.ceil(data.total / data.page_size)}
               className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronRightIcon className="h-4 w-4" />
