@@ -233,7 +233,31 @@ class BaseCyberAgent(ABC):
                 temperature=self.config.get("temperature", 0.8),
                 max_tokens=self.config.get("max_tokens", 1000),
             )
-            return response.content if hasattr(response, "content") else str(response)
+            # Handle response content
+            if hasattr(response, "content"):
+                content = response.content
+                # If content is a list, join it or take the first element
+                if isinstance(content, list):
+                    if len(content) == 1:
+                        return content[0]
+                    else:
+                        return "\n".join(str(item) for item in content)
+                return str(content)
+            else:
+                result = str(response)
+                # If the string representation looks like a list, try to parse it
+                if result.startswith("['") and result.endswith("']"):
+                    try:
+                        import ast
+
+                        parsed = ast.literal_eval(result)
+                        if isinstance(parsed, list) and len(parsed) == 1:
+                            return parsed[0]
+                        elif isinstance(parsed, list):
+                            return "\n".join(str(item) for item in parsed)
+                    except (ValueError, SyntaxError):
+                        pass
+                return result
         except Exception as e:
             print(f"Generation error for {self.role.value}: {e}")
             return f"Error generating response: {e}"

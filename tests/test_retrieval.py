@@ -66,29 +66,46 @@ class TestThreatIntelRM:
     def threat_rm(self, temp_dir):
         """Create ThreatIntelRM instance for testing."""
         # Mock the embedding model to avoid actual model loading
-        with patch("cyber_storm.rm.threat_intel_rm.SentenceTransformer") as mock_model:
-            mock_model.return_value.encode.return_value = [[0.1, 0.2, 0.3]]
+        with patch("cyber_storm.rm.threat_intel_rm.SentenceTransformer") as mock_model_class:
+            # Mock the SentenceTransformer class and its instance
+            mock_encoder = Mock()
+            mock_embedding = Mock()
+            mock_embedding.tolist.return_value = [0.1, 0.2, 0.3]
+            mock_encoder.encode.return_value = mock_embedding
+            mock_model_class.return_value = mock_encoder
 
-            rm = ThreatIntelRM(
-                collection_name="test_threat_intel",
-                embedding_model="mock-model",
-                k=3,
-                vector_store_path=temp_dir,
-            )
+            # Also mock QdrantClient to avoid vector store initialization issues
+            with patch("cyber_storm.rm.threat_intel_rm.QdrantClient") as mock_client_class:
+                mock_client = Mock()
+                # Mock the search method to return a proper iterable result
+                mock_hit = Mock()
+                mock_hit.payload = {
+                    "content": "test content",
+                    "title": "test",
+                    "url": "https://test.com",
+                }
+                mock_hit.score = 0.9
+                mock_client.search.return_value = [mock_hit]
+                mock_client_class.return_value = mock_client
 
-            # Mock the vector store
-            rm.vector_store = Mock()
-            rm.vector_store.search.return_value = [
-                {"id": "1", "payload": {"content": "test content", "title": "test"}, "score": 0.9}
-            ]
+                rm = ThreatIntelRM(
+                    collection_name="test_threat_intel",
+                    embedding_model="BAAI/bge-m3",  # Use valid model name
+                    k=3,
+                    vector_store_path=temp_dir,
+                )
 
-            return rm
+                # Ensure the mocked components are attached
+                rm.encoder = mock_encoder
+                rm.client = mock_client
+
+                return rm
 
     def test_initialization(self, threat_rm):
         """Test ThreatIntelRM initialization."""
         assert threat_rm.collection_name == "test_threat_intel"
         assert threat_rm.k == 3
-        assert threat_rm.embedding_model is not None
+        assert threat_rm.encoder is not None
 
     def test_retrieve_basic(self, threat_rm):
         """Test basic retrieval functionality."""
@@ -101,8 +118,9 @@ class TestThreatIntelRM:
         # Mock should return our test data
         if results:
             result = results[0]
-            assert "content" in result
-            assert "title" in result
+            assert hasattr(result, "snippets")
+            assert hasattr(result, "url")
+            assert hasattr(result, "title")
 
     def test_retrieve_with_filters(self, threat_rm):
         """Test retrieval with threat type filters."""
@@ -233,15 +251,23 @@ class TestHistoricalRM:
     @pytest.fixture
     def historical_rm(self, temp_dir):
         """Create HistoricalRM instance for testing."""
-        with patch("cyber_storm.rm.historical_rm.SentenceTransformer") as mock_model:
-            mock_model.return_value.encode.return_value = [[0.1, 0.2, 0.3]]
+        # Mock the VectorRM parent class initialization
+        with patch("knowledge_storm.rm.VectorRM.__init__") as mock_parent_init:
+            mock_parent_init.return_value = None
 
             rm = HistoricalRM(
                 collection_name="test_historical",
-                embedding_model="mock-model",
+                embedding_model="BAAI/bge-m3",
                 k=3,
                 vector_store_path=temp_dir,
             )
+
+            # Manually set required attributes that would normally be set by parent
+            rm.collection_name = "test_historical"
+            rm.k = 3
+            rm.device = "cpu"
+            rm.encoder = Mock()
+            rm.encoder.encode.return_value = [[0.1, 0.2, 0.3]]
 
             # Mock the vector store
             rm.vector_store = Mock()

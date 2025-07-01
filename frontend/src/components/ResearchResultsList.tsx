@@ -11,6 +11,7 @@ import {
 } from '../services/api';
 import type { ResearchResult } from '../types/research';
 import { OutputFormat } from '../types/research';
+import { MarkdownViewer } from './MarkdownViewer';
 import { 
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -240,7 +241,7 @@ export const ResearchResultsList: React.FC<ResearchResultsListProps> = ({
             </div>
           ))}
         </div>
-      ) : data && data.results.length > 0 ? (
+      ) : data && data.results && data.results.length > 0 ? (
         <div className="space-y-4">
           {data.results.map((result) => {
             const FormatIcon = formatIcons[result.output_format];
@@ -268,9 +269,12 @@ export const ResearchResultsList: React.FC<ResearchResultsListProps> = ({
                     </div>
 
                     {result.summary && (
-                      <p className="text-gray-700 mb-3">
-                        {truncateContent(result.summary)}
-                      </p>
+                      <div className="text-gray-700 mb-3 prose prose-sm max-w-none">
+                        <MarkdownViewer 
+                          content={truncateContent(result.summary)} 
+                          className="text-sm"
+                        />
+                      </div>
                     )}
 
                     {result.tags && result.tags.length > 0 && (

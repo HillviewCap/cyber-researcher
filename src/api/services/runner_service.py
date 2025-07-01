@@ -80,18 +80,21 @@ class RunnerService:
         if progress_callback:
             await progress_callback(ResearchStatus.GENERATING, 80, "Formatting blog post...")
 
-        # Create result
+        # Create result with proper metadata separation
         result = ResearchResult(
             session_id="",  # Will be set by caller
             title=blog_post.title,
-            content=blog_post.content,
-            metadata=blog_post.metadata,
+            content=blog_post.content,  # Final polished content only
+            metadata=blog_post.metadata,  # Technical metadata only
             sources=blog_post.sources,
-            agent_contributions=self._extract_agent_contributions(blog_post.metadata),
+            agent_contributions=blog_post.agent_workflow_summary,  # Use new workflow summary
             created_at=datetime.fromisoformat(blog_post.created_at),
             output_format=OutputFormat.BLOG_POST,
             summary=blog_post.summary,
             tags=blog_post.tags,
+            workflow_metadata=blog_post.workflow_metadata,  # Complete workflow information
+            generation_process=blog_post.generation_process,  # Step-by-step process
+            agent_workflow_summary=blog_post.agent_workflow_summary,  # Agent contributions
         )
 
         return result

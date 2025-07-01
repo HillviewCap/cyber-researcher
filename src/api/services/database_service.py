@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import desc, and_, or_
 
-from ..database.models import ResearchSession, ResearchResult, ResearchMetadata
+from ..database.models import ResearchSession, ResearchResult, ResearchMetadata, AgentActivity
 from ..database.base import get_db
 from ..models.research import (
     ResearchRequest,
@@ -48,8 +48,13 @@ class DatabaseService:
         try:
             session_id = str(uuid4())
 
-            from ..database.models import OutputFormatEnum, TargetAudienceEnum, TechnicalDepthEnum, ResearchStatusEnum
-            
+            from ..database.models import (
+                OutputFormatEnum,
+                TargetAudienceEnum,
+                TechnicalDepthEnum,
+                ResearchStatusEnum,
+            )
+
             db_session = ResearchSession(
                 session_id=session_id,
                 topic=request.topic,
@@ -135,7 +140,12 @@ class DatabaseService:
                 return None
 
             from ..database.models import ResearchStatusEnum
-            db_session.status = ResearchStatusEnum(status.value) if hasattr(status, 'value') else ResearchStatusEnum(status)
+
+            db_session.status = (
+                ResearchStatusEnum(status.value)
+                if hasattr(status, "value")
+                else ResearchStatusEnum(status)
+            )
             db_session.progress_percentage = progress_percentage
             db_session.current_step = current_step
             db_session.error_message = error_message
@@ -161,6 +171,7 @@ class DatabaseService:
         sources: List[str],
         agent_contributions: Dict[str, Dict[str, Any]],
         output_format: OutputFormat,
+        metadata: Optional[Dict[str, Any]] = None,
         summary: Optional[str] = None,
         key_concepts: Optional[List[str]] = None,
         exercises: Optional[List[str]] = None,
@@ -177,6 +188,7 @@ class DatabaseService:
             sources: List of sources
             agent_contributions: Agent contribution data
             output_format: Output format
+            metadata: Optional technical metadata
             summary: Optional summary
             key_concepts: Optional key concepts
             exercises: Optional exercises
@@ -189,7 +201,7 @@ class DatabaseService:
             result_id = str(uuid4())
 
             from ..database.models import OutputFormatEnum
-            
+
             db_result = ResearchResult(
                 result_id=result_id,
                 session_id=session_id,
@@ -197,7 +209,12 @@ class DatabaseService:
                 content=content,
                 sources=sources,
                 agent_contributions=agent_contributions,
-                output_format=OutputFormatEnum(output_format.value) if hasattr(output_format, 'value') else OutputFormatEnum(output_format),
+                technical_metadata=metadata or {},
+                output_format=(
+                    OutputFormatEnum(output_format.value)
+                    if hasattr(output_format, "value")
+                    else OutputFormatEnum(output_format)
+                ),
                 summary=summary,
                 key_concepts=key_concepts,
                 exercises=exercises,
@@ -430,6 +447,176 @@ class DatabaseService:
 
         except SQLAlchemyError as e:
             logger.error(f"Database error listing research sessions: {e}")
+            raise
+
+    def create_agent_activity(
+        self,
+        db: Session,
+        session_id: str,
+        agent_name: str,
+        agent_type: str,
+        step_name: str,
+        step_order: int,
+        input_data: Optional[Dict[str, Any]] = None,
+        step_metadata: Optional[Dict[str, Any]] = None,
+    ) -> AgentActivity:
+        """
+        Create a new agent activity record.
+
+        Args:
+            db: Database session
+            session_id: Research session ID
+            agent_name: Name of the agent
+            agent_type: Type/class of the agent
+            step_name: Name of the step being performed
+            step_order: Order of execution
+            input_data: Input data for the step
+            step_metadata: Additional metadata
+
+        Returns:
+            Created agent activity
+        """
+        try:
+            activity = AgentActivity(
+                session_id=session_id,
+                agent_name=agent_name,
+                agent_type=agent_type,
+                step_name=step_name,
+                step_order=step_order,
+                status="pending",
+                input_data=input_data,
+                step_metadata=step_metadata,
+            )
+
+            db.add(activity)
+            db.commit()
+            db.refresh(activity)
+
+            logger.info(f"Created agent activity: {activity.activity_id}")
+            return activity
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error creating agent activity: {e}")
+            db.rollback()
+            raise
+
+    def update_agent_activity(
+        self,
+        db: Session,
+        activity_id: str,
+        status: Optional[str] = None,
+        output_data: Optional[Dict[str, Any]] = None,
+        sources: Optional[List[str]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        duration_seconds: Optional[int] = None,
+        error_message: Optional[str] = None,
+        retry_count: Optional[int] = None,
+    ) -> Optional[AgentActivity]:
+        """
+        Update an existing agent activity record.
+
+        Args:
+            db: Database session
+            activity_id: Activity ID to update
+            status: New status
+            output_data: Output data from the step
+            sources: Sources used by the agent
+            start_time: Step start time
+            end_time: Step end time
+            duration_seconds: Duration in seconds
+            error_message: Error message if failed
+            retry_count: Number of retries
+
+        Returns:
+            Updated agent activity or None if not found
+        """
+        try:
+            activity = (
+                db.query(AgentActivity).filter(AgentActivity.activity_id == activity_id).first()
+            )
+
+            if not activity:
+                logger.warning(f"Agent activity not found: {activity_id}")
+                return None
+
+            # Update fields if provided
+            if status is not None:
+                activity.status = status
+            if output_data is not None:
+                activity.output_data = output_data
+            if sources is not None:
+                activity.sources = sources
+            if start_time is not None:
+                activity.start_time = start_time
+            if end_time is not None:
+                activity.end_time = end_time
+            if duration_seconds is not None:
+                activity.duration_seconds = duration_seconds
+            if error_message is not None:
+                activity.error_message = error_message
+            if retry_count is not None:
+                activity.retry_count = retry_count
+
+            db.commit()
+            db.refresh(activity)
+
+            logger.info(f"Updated agent activity: {activity_id}")
+            return activity
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error updating agent activity {activity_id}: {e}")
+            db.rollback()
+            raise
+
+    def get_agent_activities(self, db: Session, session_id: str) -> List[AgentActivity]:
+        """
+        Get all agent activities for a research session.
+
+        Args:
+            db: Database session
+            session_id: Research session ID
+
+        Returns:
+            List of agent activities
+        """
+        try:
+            activities = (
+                db.query(AgentActivity)
+                .filter(AgentActivity.session_id == session_id)
+                .order_by(AgentActivity.step_order, AgentActivity.start_time)
+                .all()
+            )
+
+            return activities
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting agent activities for session {session_id}: {e}")
+            raise
+
+    def delete_agent_activities(self, db: Session, session_id: str) -> bool:
+        """
+        Delete all agent activities for a research session.
+
+        Args:
+            db: Database session
+            session_id: Research session ID
+
+        Returns:
+            True if successful
+        """
+        try:
+            deleted_count = (
+                db.query(AgentActivity).filter(AgentActivity.session_id == session_id).delete()
+            )
+
+            db.commit()
+            logger.info(f"Deleted {deleted_count} agent activities for session: {session_id}")
+            return True
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error deleting agent activities for session {session_id}: {e}")
+            db.rollback()
             raise
 
 

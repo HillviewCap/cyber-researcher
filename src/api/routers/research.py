@@ -88,7 +88,7 @@ async def get_research_result(session_id: str, db: Session = Depends(get_db)):
     # Get all results for this session
     results = database_service.get_research_results_by_session(db, session_id)
 
-    return [ResearchResultDB.model_validate(result) for result in results]
+    return [ResearchResultDB.from_db(result) for result in results]
 
 
 @router.get("/research/sessions", response_model=List[ResearchSessionDB])
@@ -262,6 +262,7 @@ async def run_research_task(
                 sources=result.sources,
                 agent_contributions=result.agent_contributions,
                 output_format=result.output_format,
+                metadata=result.metadata,
                 summary=result.summary,
                 key_concepts=result.key_concepts,
                 exercises=result.exercises,
@@ -351,6 +352,7 @@ async def send_websocket_update(
 
 # Research Results Management Endpoints
 
+
 @router.get("/research/results", response_model=ResearchListResponse)
 async def list_research_results(
     page: int = 1,
@@ -360,32 +362,35 @@ async def list_research_results(
     db: Session = Depends(get_db),
 ):
     """List research results with pagination and filtering."""
-    
+
     try:
         # Convert string output_format to enum if provided
         format_filter = None
         if output_format:
             try:
                 from ..models.research import OutputFormat
+
                 format_filter = OutputFormat(output_format)
             except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid output format: {output_format}")
-        
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid output format: {output_format}"
+                )
+
         results, total_count = database_service.list_research_results(
-            db, 
-            page=page, 
-            page_size=page_size, 
+            db,
+            page=page,
+            page_size=page_size,
             search_query=search_query,
-            output_format=format_filter
+            output_format=format_filter,
         )
-        
+
         return ResearchListResponse(
             total=total_count,
             page=page,
             page_size=page_size,
-            items=[ResearchResultDB.model_validate(result) for result in results]
+            items=[ResearchResultDB.from_db(result) for result in results],
         )
-    
+
     except Exception as e:
         logger.error(f"Error listing research results: {e}")
         raise HTTPException(status_code=500, detail="Failed to list research results")
@@ -394,29 +399,27 @@ async def list_research_results(
 @router.get("/research/results/{result_id}", response_model=ResearchResultDB)
 async def get_research_result_by_id(result_id: str, db: Session = Depends(get_db)):
     """Get a specific research result by ID."""
-    
+
     result = database_service.get_research_result(db, result_id)
     if not result:
         raise HTTPException(status_code=404, detail="Research result not found")
-    
-    return ResearchResultDB.model_validate(result)
+
+    return ResearchResultDB.from_db(result)
 
 
 @router.put("/research/results/{result_id}", response_model=ResearchResultDB)
 async def update_research_result(
-    result_id: str, 
-    update_data: ResearchUpdateRequest,
-    db: Session = Depends(get_db)
+    result_id: str, update_data: ResearchUpdateRequest, db: Session = Depends(get_db)
 ):
     """Update a research result."""
-    
+
     try:
         updated_result = database_service.update_research_result(db, result_id, update_data)
         if not updated_result:
             raise HTTPException(status_code=404, detail="Research result not found")
-        
-        return ResearchResultDB.model_validate(updated_result)
-    
+
+        return ResearchResultDB.from_db(updated_result)
+
     except Exception as e:
         logger.error(f"Error updating research result {result_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to update research result")
@@ -425,18 +428,18 @@ async def update_research_result(
 @router.delete("/research/results/{result_id}", response_model=ResearchDeleteResponse)
 async def delete_research_result(result_id: str, db: Session = Depends(get_db)):
     """Delete a research result."""
-    
+
     try:
         success = database_service.delete_research_result(db, result_id)
         if not success:
             raise HTTPException(status_code=404, detail="Research result not found")
-        
+
         return ResearchDeleteResponse(
             success=True,
             message="Research result deleted successfully",
-            deleted_result_id=result_id
+            deleted_result_id=result_id,
         )
-    
+
     except Exception as e:
         logger.error(f"Error deleting research result {result_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete research result")

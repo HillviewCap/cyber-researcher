@@ -103,12 +103,17 @@ class ResearchResult(BaseModel):
 
     session_id: str
     title: str
-    content: str
-    metadata: Dict[str, Any]
+    content: str  # Final polished content only
+    metadata: Dict[str, Any]  # Technical metadata only
     sources: List[str]
-    agent_contributions: Dict[str, Dict[str, Any]]
+    agent_contributions: Dict[str, Dict[str, Any]]  # Legacy compatibility
     created_at: datetime
     output_format: OutputFormat
+
+    # Workflow separation fields
+    workflow_metadata: Optional[Dict[str, Any]] = None  # Complete workflow information
+    generation_process: Optional[Dict[str, Any]] = None  # Step-by-step process
+    agent_workflow_summary: Optional[Dict[str, Any]] = None  # Agent contributions summary
 
     # Format-specific fields
     summary: Optional[str] = None
@@ -185,16 +190,47 @@ class ResearchResultDB(BaseModel):
     result_id: str
     session_id: str
     title: str
-    content: str
+    content: str  # Final polished content only
     sources: Optional[List[str]] = None
-    agent_contributions: Optional[Dict[str, Dict[str, Any]]] = None
+    agent_contributions: Optional[Dict[str, Dict[str, Any]]] = None  # Legacy compatibility
+    metadata: Optional[Dict[str, Any]] = None  # Technical metadata only
     output_format: OutputFormat
+
+    # Workflow separation fields
+    workflow_metadata: Optional[Dict[str, Any]] = None  # Complete workflow information
+    generation_process: Optional[Dict[str, Any]] = None  # Step-by-step process
+    agent_workflow_summary: Optional[Dict[str, Any]] = None  # Agent contributions summary
+
     summary: Optional[str] = None
     key_concepts: Optional[List[str]] = None
     exercises: Optional[List[str]] = None
     learning_objectives: Optional[List[str]] = None
     created_at: datetime
     updated_at: datetime
+
+    @classmethod
+    def from_db(cls, db_result):
+        """Create from database model, mapping database fields to model fields."""
+        return cls(
+            id=db_result.id,
+            result_id=db_result.result_id,
+            session_id=db_result.session_id,
+            title=db_result.title,
+            content=db_result.content,  # Final content only
+            sources=db_result.sources,
+            agent_contributions=db_result.agent_contributions,  # Legacy field
+            metadata=db_result.technical_metadata,  # Technical metadata only
+            workflow_metadata=db_result.workflow_metadata,  # Workflow information
+            generation_process=db_result.generation_process,  # Process steps
+            agent_workflow_summary=db_result.agent_workflow_summary,  # Agent summary
+            output_format=db_result.output_format,
+            summary=db_result.summary,
+            key_concepts=db_result.key_concepts,
+            exercises=db_result.exercises,
+            learning_objectives=db_result.learning_objectives,
+            created_at=db_result.created_at,
+            updated_at=db_result.updated_at,
+        )
 
 
 class ResearchListResponse(BaseModel):

@@ -61,15 +61,80 @@ export interface ProgressUpdate {
   agent_activity: Record<string, string>;
 }
 
+// Workflow metadata interfaces
+export interface AgentActivity {
+  activity_id: string;
+  agent_name: string;
+  step_name: string;
+  step_order: number;
+  status: string;
+  start_time: string;
+  end_time?: string;
+  duration_seconds?: number;
+  error_message?: string;
+  retry_count: number;
+  input_data?: Record<string, unknown>;
+  output_data?: Record<string, unknown>;
+}
+
+export interface WorkflowSummary {
+  agents_used: string[];
+  total_steps: number;
+  completed_steps: number;
+  failed_steps: number;
+  status: string;
+  start_time: string;
+  end_time?: string;
+  total_duration_seconds?: number;
+}
+
+export interface GenerationStep {
+  agent: string;
+  action: string;
+  status: string;
+  start_time: string;
+  end_time?: string;
+  duration_seconds?: number;
+}
+
+export interface GenerationProcess {
+  total_steps: number;
+  completed_steps: number;
+  failed_steps: number;
+  steps: GenerationStep[];
+  start_time: string;
+  end_time?: string;
+}
+
+export interface AgentContribution {
+  status: string;
+  steps_completed: number;
+  total_steps: number;
+  total_duration: number;
+  sources: string[];
+  errors: string[];
+}
+
+export interface WorkflowMetadata {
+  workflow_summary: WorkflowSummary;
+  agent_activities: AgentActivity[];
+}
+
 export interface ResearchResult {
   session_id: string;
   title: string;
-  content: string;
-  metadata: Record<string, unknown>;
+  content: string; // Final polished content only
+  metadata: Record<string, unknown>; // Technical metadata only
   sources: string[];
-  agent_contributions: Record<string, Record<string, unknown>>;
+  agent_contributions: Record<string, AgentContribution | Record<string, unknown>>; // Legacy compatibility
   created_at: string;
   output_format: OutputFormat;
+  
+  // Workflow separation fields
+  workflow_metadata?: WorkflowMetadata; // Complete workflow information
+  generation_process?: GenerationProcess; // Step-by-step process
+  agent_workflow_summary?: Record<string, AgentContribution>; // Agent contributions summary
+  
   summary?: string;
   tags?: string[];
   key_concepts?: string[];

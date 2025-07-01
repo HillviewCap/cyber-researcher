@@ -21,6 +21,7 @@ from cyber_storm.agents import (
     ContentType,
     AgentRole,
 )
+from knowledge_storm.interface import Information
 
 
 class TestSecurityAnalystAgent:
@@ -39,13 +40,14 @@ class TestSecurityAnalystAgent:
         config = {"model": "mock-model", "temperature": 0.7}
         agent = SecurityAnalystAgent(language_model=mock_lm, config=config)
         agent.retrieval_module = Mock()
-        agent.retrieval_module.retrieve.return_value = [
-            {
-                "title": "Test Security Report",
-                "content": "Security content",
-                "url": "http://test.com",
-            }
-        ]
+        # Return proper Information objects
+        test_info = Information(
+            url="http://test.com",
+            title="Test Security Report",
+            snippets="Security content for testing",
+            description="Mock security report for testing",
+        )
+        agent.retrieval_module.retrieve.return_value = [test_info]
         return agent
 
     def test_agent_initialization(self, security_agent):
@@ -126,13 +128,14 @@ class TestThreatResearcherAgent:
         config = {"model": "mock-model", "temperature": 0.8}
         agent = ThreatResearcherAgent(language_model=mock_lm, config=config)
         agent.retrieval_module = Mock()
-        agent.retrieval_module.retrieve.return_value = [
-            {
-                "title": "Threat Intel Report",
-                "content": "Threat content",
-                "url": "http://threat.com",
-            }
-        ]
+        # Return proper Information objects
+        test_info = Information(
+            url="http://threat.com",
+            title="Threat Intel Report",
+            snippets="Threat intelligence content for testing",
+            description="Mock threat intelligence report for testing",
+        )
+        agent.retrieval_module.retrieve.return_value = [test_info]
         return agent
 
     def test_agent_initialization(self, threat_agent):
@@ -194,13 +197,14 @@ class TestHistorianAgent:
         config = {"model": "mock-model", "temperature": 0.9}
         agent = HistorianAgent(language_model=mock_lm, config=config)
         agent.retrieval_module = Mock()
-        agent.retrieval_module.retrieve.return_value = [
-            {
-                "title": "Historical Event",
-                "content": "Historical content",
-                "url": "http://history.com",
-            }
-        ]
+        # Return proper Information objects
+        test_info = Information(
+            url="http://history.com",
+            title="Historical Event",
+            snippets="Historical content for testing",
+            description="Mock historical event for testing",
+        )
+        agent.retrieval_module.retrieve.return_value = [test_info]
         return agent
 
     def test_agent_initialization(self, historian_agent):

@@ -84,6 +84,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Uses `secrets.toml` for API keys (gitignored)
 - Located in `src/cyber_storm/config/`
 
+**Workflow Tracking System**:
+- `WorkflowTracker` - Comprehensive agent activity tracking and audit trail
+- Records individual agent steps with timing, status, and metadata
+- Separates final content from workflow/process information
+- Provides real-time progress callbacks and performance metrics
+- Located in `src/cyber_storm/workflow_tracker.py`
+
 **Database Layer**:
 - `SQLAlchemy` - ORM with async support for research metadata persistence
 - `Alembic` - Database migration management
@@ -105,8 +112,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Data Flow
 ```
-Frontend Interface → FastAPI Endpoints → Database Services → CyberStormRunner → Multi-Agent Discourse → Retrieval Modules → Template-Based Synthesis → Educational Enhancement → Database Persistence → Frontend Display
+Frontend Interface → FastAPI Endpoints → Database Services → CyberStormRunner → WorkflowTracker → Multi-Agent Discourse → Retrieval Modules → Template-Based Synthesis → Educational Enhancement → Workflow Metadata Separation → Database Persistence → Frontend Display
 ```
+
+### Content vs Workflow Separation
+The system implements a critical separation between final content and workflow metadata:
+
+**Content Data** (displayed in Content tab):
+- Final polished research output only
+- Professional, publication-ready format
+- No agent workflow or process information
+
+**Workflow Metadata** (displayed in Metadata tab):
+- Complete agent activity audit trail with timing and status
+- Step-by-step generation process tracking
+- Agent contribution summaries and performance metrics
+- Error tracking and retry counts
+- Real-time progress information
 
 ### API Architecture
 ```
@@ -209,6 +231,27 @@ tests/                    # Comprehensive test suite
 - `alembic.ini` - Database migration configuration
 - Uses TOML format for all configuration management
 
+### Workflow Tracking Architecture
+The system includes sophisticated workflow tracking for transparency and debugging:
+
+**WorkflowTracker Class**:
+- Tracks individual agent activities with unique IDs
+- Records timing, status, input/output data, and sources
+- Supports activity states: `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`
+- Provides real-time progress callbacks
+
+**Database Integration**:
+- `AgentActivity` model stores complete activity records
+- Activities linked to research sessions via foreign keys
+- Comprehensive error tracking with retry support
+- Performance metrics for optimization analysis
+
+**Metadata Structure**:
+- `workflow_metadata` - Complete workflow information and agent activities
+- `generation_process` - Step-by-step process breakdown
+- `agent_workflow_summary` - Agent contribution summaries
+- `agent_contributions` - Legacy field for backward compatibility
+
 ### Language Model Integration
 - **Primary LLM**: Claude models (Anthropic) - integrated as default
   - Security Analyst: `claude-3-sonnet-20240229`
@@ -263,6 +306,8 @@ tests/                    # Comprehensive test suite
 - ✅ Complete web interface with markdown editing capabilities
 - ✅ Real-time progress tracking via WebSocket
 - ✅ Automated testing infrastructure and quality assurance
+- ✅ Workflow tracking and agent activity audit trail system
+- ✅ Content/workflow metadata separation for clean presentation
 
 ## AI Agent Management
 - **Create agents to complete independent tasks**

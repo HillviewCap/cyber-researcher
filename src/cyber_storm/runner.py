@@ -33,6 +33,7 @@ from .agents import (
 from .rm import ThreatIntelRM, HistoricalRM
 from .templates import BlogPostTemplate, BookChapterTemplate, ResearchReportTemplate
 from .modules import title_generator
+from .workflow_tracker import WorkflowTracker
 
 
 @dataclass
@@ -40,11 +41,14 @@ class BlogPost:
     """Structure for generated blog posts."""
 
     title: str
-    content: str
+    content: str  # Final polished content only
     summary: str
     tags: List[str]
     sources: List[str]
-    metadata: Dict[str, Any]
+    metadata: Dict[str, Any]  # Technical metadata
+    workflow_metadata: Dict[str, Any]  # Agent workflow and process information
+    generation_process: Dict[str, Any]  # Step-by-step generation process
+    agent_workflow_summary: Dict[str, Any]  # Summary of agent activities
     created_at: str
 
 
@@ -54,13 +58,16 @@ class BookChapter:
 
     chapter_number: int
     title: str
-    content: str
+    content: str  # Final polished content only
     summary: str
     learning_objectives: List[str]
     key_concepts: List[str]
     exercises: List[str]
     sources: List[str]
-    metadata: Dict[str, Any]
+    metadata: Dict[str, Any]  # Technical metadata
+    workflow_metadata: Dict[str, Any]  # Agent workflow and process information
+    generation_process: Dict[str, Any]  # Step-by-step generation process
+    agent_workflow_summary: Dict[str, Any]  # Summary of agent activities
     created_at: str
 
 
@@ -228,18 +235,27 @@ class CyberStormRunner:
             self.chapter_template = None
             self.report_template = None
 
-    def generate_blog_post(self, topic: str, style: str = "educational") -> BlogPost:
+    def generate_blog_post(
+        self, topic: str, style: str = "educational", session_id: str = None
+    ) -> BlogPost:
         """
-        Generate a blog post on a cybersecurity topic.
+        Generate a blog post on a cybersecurity topic with workflow tracking.
 
         Args:
             topic: The cybersecurity topic to write about
             style: Writing style (educational, technical, narrative)
+            session_id: Optional session ID for workflow tracking
 
         Returns:
-            BlogPost object with generated content
+            BlogPost object with generated content and workflow metadata
         """
         print(f"Generating blog post on: {topic}")
+
+        # Initialize workflow tracker
+        if not session_id:
+            session_id = f"blog_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+        tracker = WorkflowTracker(session_id)
 
         # Create agent context
         context = AgentContext(
@@ -251,97 +267,176 @@ class CyberStormRunner:
             historical_focus=self.config.generation_config.include_historical_context,
         )
 
-        # Get analysis from all agents
-        security_analysis = self.security_analyst.analyze_topic(context)
-        threat_analysis = self.threat_researcher.analyze_topic(context)
-        historical_analysis = self.historian.analyze_topic(context)
-
-        # Generate metadata
-        metadata = {
-            "agents_used": ["security_analyst", "threat_researcher", "historian"],
-            "retrieval_sources": len(
-                security_analysis.sources + threat_analysis.sources + historical_analysis.sources
-            ),
-            "style": style,
-            "technical_depth": context.technical_depth,
-            "target_audience": context.target_audience,
-        }
-
-        # Synthesize content using professional template
-        if self.blog_template:
-            # Generate preliminary content for title analysis
-            preliminary_content = self.blog_template.format_blog_post(
-                title=topic,  # Temporary title for content generation
-                topic=topic,
-                security_analysis=security_analysis.content,
-                threat_analysis=threat_analysis.content,
-                historical_analysis=historical_analysis.content,
-                suggestions=security_analysis.suggestions
-                + threat_analysis.suggestions
-                + historical_analysis.suggestions,
-                sources=list(
-                    set(
-                        security_analysis.sources
-                        + threat_analysis.sources
-                        + historical_analysis.sources
-                    )
-                ),
-                metadata=metadata,
-                style=style,
+        # Track agent activities
+        try:
+            # Security Analyst Phase
+            security_activity = tracker.start_activity(
+                agent_name="security_analyst",
+                agent_type="SecurityAnalystAgent",
+                step_name="analyze_topic",
+                input_data={"topic": topic, "context": context.__dict__},
+            )
+            security_analysis = self.security_analyst.analyze_topic(context)
+            tracker.complete_activity(
+                security_activity,
+                output_data={
+                    "content_length": len(security_analysis.content),
+                    "suggestions_count": len(security_analysis.suggestions),
+                },
+                sources=security_analysis.sources,
             )
 
-            # Generate optimized title based on content
-            title = title_generator.generate_title(
-                topic=topic,
-                content=preliminary_content[:1000],  # First 1000 chars for analysis
-                content_type="blog_post",
+            # Threat Researcher Phase
+            threat_activity = tracker.start_activity(
+                agent_name="threat_researcher",
+                agent_type="ThreatResearcherAgent",
+                step_name="analyze_topic",
+                input_data={"topic": topic, "context": context.__dict__},
+            )
+            threat_analysis = self.threat_researcher.analyze_topic(context)
+            tracker.complete_activity(
+                threat_activity,
+                output_data={
+                    "content_length": len(threat_analysis.content),
+                    "suggestions_count": len(threat_analysis.suggestions),
+                },
+                sources=threat_analysis.sources,
             )
 
-            # Re-generate content with optimized title
-            content = self.blog_template.format_blog_post(
-                title=title,
-                topic=topic,
-                security_analysis=security_analysis.content,
-                threat_analysis=threat_analysis.content,
-                historical_analysis=historical_analysis.content,
-                suggestions=security_analysis.suggestions
-                + threat_analysis.suggestions
-                + historical_analysis.suggestions,
-                sources=list(
-                    set(
-                        security_analysis.sources
-                        + threat_analysis.sources
-                        + historical_analysis.sources
-                    )
-                ),
-                metadata=metadata,
-                style=style,
+            # Historian Phase
+            historian_activity = tracker.start_activity(
+                agent_name="historian",
+                agent_type="HistorianAgent",
+                step_name="analyze_topic",
+                input_data={"topic": topic, "context": context.__dict__},
             )
-        else:
-            # Fallback to basic synthesis
-            content = self._synthesize_blog_content(
-                topic, security_analysis, threat_analysis, historical_analysis
+            historical_analysis = self.historian.analyze_topic(context)
+            tracker.complete_activity(
+                historian_activity,
+                output_data={
+                    "content_length": len(historical_analysis.content),
+                    "suggestions_count": len(historical_analysis.suggestions),
+                },
+                sources=historical_analysis.sources,
             )
 
-            # Generate title for fallback content
-            title = title_generator.generate_title(
-                topic=topic, content=content[:1000], content_type="blog_post"
+            # Content Synthesis Phase
+            synthesis_activity = tracker.start_activity(
+                agent_name="content_synthesizer",
+                agent_type="ContentSynthesizer",
+                step_name="synthesize_blog_content",
+                input_data={"style": style, "template_available": self.blog_template is not None},
             )
 
-        # Create blog post
-        blog_post = BlogPost(
-            title=title,
-            content=content,
-            summary=self._generate_summary(content),
-            tags=self._extract_tags(topic, content),
-            sources=list(
+            # Generate technical metadata (separate from workflow)
+            metadata = {
+                "style": style,
+                "technical_depth": context.technical_depth,
+                "target_audience": context.target_audience,
+                "content_type": "blog_post",
+            }
+
+            # Synthesize content using professional template
+            if self.blog_template:
+                # Generate preliminary content for title analysis
+                preliminary_content = self.blog_template.format_blog_post(
+                    title=topic,  # Temporary title for content generation
+                    topic=topic,
+                    security_analysis=security_analysis.content,
+                    threat_analysis=threat_analysis.content,
+                    historical_analysis=historical_analysis.content,
+                    suggestions=security_analysis.suggestions
+                    + threat_analysis.suggestions
+                    + historical_analysis.suggestions,
+                    sources=list(
+                        set(
+                            security_analysis.sources
+                            + threat_analysis.sources
+                            + historical_analysis.sources
+                        )
+                    ),
+                    metadata=metadata,
+                    style=style,
+                )
+
+                # Generate optimized title based on content
+                title = title_generator.generate_title(
+                    topic=topic,
+                    content=preliminary_content[:1000],  # First 1000 chars for analysis
+                    content_type="blog_post",
+                )
+
+                # Re-generate content with optimized title (FINAL CLEAN CONTENT)
+                content = self.blog_template.format_blog_post(
+                    title=title,
+                    topic=topic,
+                    security_analysis=security_analysis.content,
+                    threat_analysis=threat_analysis.content,
+                    historical_analysis=historical_analysis.content,
+                    suggestions=security_analysis.suggestions
+                    + threat_analysis.suggestions
+                    + historical_analysis.suggestions,
+                    sources=list(
+                        set(
+                            security_analysis.sources
+                            + threat_analysis.sources
+                            + historical_analysis.sources
+                        )
+                    ),
+                    metadata=metadata,
+                    style=style,
+                )
+            else:
+                # Fallback to basic synthesis
+                content = self._synthesize_blog_content(
+                    topic, security_analysis, threat_analysis, historical_analysis
+                )
+
+                # Generate title for fallback content
+                title = title_generator.generate_title(
+                    topic=topic, content=content[:1000], content_type="blog_post"
+                )
+
+            tracker.complete_activity(
+                synthesis_activity,
+                output_data={
+                    "final_content_length": len(content),
+                    "title": title,
+                    "template_used": self.blog_template is not None,
+                },
+            )
+
+            # Collect all sources
+            all_sources = list(
                 set(
                     security_analysis.sources
                     + threat_analysis.sources
                     + historical_analysis.sources
                 )
-            ),
-            metadata=metadata,
+            )
+
+        except Exception as e:
+            # Handle any activity failures
+            for activity_id in tracker.current_activities:
+                tracker.fail_activity(activity_id, str(e))
+            raise
+
+        # Get workflow data for metadata separation
+        workflow_metadata = tracker.get_workflow_metadata()
+        generation_process = tracker.get_generation_process()
+        agent_workflow_summary = tracker.get_agent_contributions_summary()
+
+        # Create blog post with separated content and workflow metadata
+        blog_post = BlogPost(
+            title=title,
+            content=content,  # ONLY final polished content, no workflow info
+            summary=self._generate_summary(content),
+            tags=self._extract_tags(topic, content),
+            sources=all_sources,
+            metadata=metadata,  # Technical metadata only
+            workflow_metadata=workflow_metadata,  # Complete workflow information
+            generation_process=generation_process,  # Step-by-step process
+            agent_workflow_summary=agent_workflow_summary,  # Agent contributions summary
             created_at=datetime.now().isoformat(),
         )
 

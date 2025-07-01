@@ -279,7 +279,9 @@ export const ResearchResultEditor: React.FC<ResearchResultEditorProps> = ({
               {result.summary && (
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="text-sm font-medium text-gray-900 mb-1">Summary</h4>
-                  <p className="text-sm text-gray-700">{result.summary}</p>
+                  <div className="text-sm text-gray-700 prose prose-sm max-w-none">
+                    <MarkdownViewer content={result.summary} className="text-sm" />
+                  </div>
                 </div>
               )}
 

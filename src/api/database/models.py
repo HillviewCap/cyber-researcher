@@ -111,6 +111,9 @@ class ResearchSession(Base):
 
     # Relationships
     results = relationship("ResearchResult", back_populates="session", cascade="all, delete-orphan")
+    agent_activities = relationship(
+        "AgentActivity", back_populates="session", cascade="all, delete-orphan"
+    )
 
 
 class ResearchResult(Base):
@@ -127,9 +130,15 @@ class ResearchResult(Base):
 
     # Core result data
     title = Column(String, nullable=False)
-    content = Column(Text, nullable=False)
+    content = Column(Text, nullable=False)  # Final polished content only
     sources = Column(JSON, nullable=True)  # List[str]
-    agent_contributions = Column(JSON, nullable=True)  # Dict[str, Dict[str, Any]]
+    agent_contributions = Column(JSON, nullable=True)  # Dict[str, Dict[str, Any]] - Legacy field
+    technical_metadata = Column(JSON, nullable=True)  # Dict[str, Any] - Technical metadata
+
+    # Workflow separation
+    workflow_metadata = Column(JSON, nullable=True)  # Agent workflow, process steps, etc.
+    generation_process = Column(JSON, nullable=True)  # Step-by-step generation process
+    agent_workflow_summary = Column(JSON, nullable=True)  # Summary of agent activities
 
     # Format-specific fields
     output_format = Column(SQLEnum(OutputFormatEnum), nullable=False)
@@ -147,6 +156,54 @@ class ResearchResult(Base):
     metadata_entries = relationship(
         "ResearchMetadata", back_populates="result", cascade="all, delete-orphan"
     )
+
+
+class AgentActivity(Base):
+    """Agent activity tracking for workflow audit trail."""
+
+    __tablename__ = "agent_activities"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+    activity_id = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+
+    # Foreign key to session
+    session_id = Column(String, ForeignKey("research_sessions.session_id"), nullable=False)
+
+    # Agent information
+    agent_name = Column(String, nullable=False)  # security_analyst, threat_researcher, historian
+    agent_type = Column(String, nullable=False)  # Type of agent
+
+    # Activity details
+    step_name = Column(String, nullable=False)  # analyze_topic, generate_questions, etc.
+    step_order = Column(Integer, nullable=False)  # Order of execution
+    status = Column(
+        String, nullable=False, default="pending"
+    )  # pending, running, completed, failed
+
+    # Input/Output data
+    input_data = Column(JSON, nullable=True)  # Agent input parameters
+    output_data = Column(JSON, nullable=True)  # Agent output/response
+    sources = Column(JSON, nullable=True)  # Sources used by this agent step
+
+    # Performance metrics
+    start_time = Column(DateTime(timezone=True), nullable=True)
+    end_time = Column(DateTime(timezone=True), nullable=True)
+    duration_seconds = Column(Integer, nullable=True)
+
+    # Error handling
+    error_message = Column(Text, nullable=True)
+    retry_count = Column(Integer, default=0)
+
+    # Additional data
+    step_metadata = Column(JSON, nullable=True)  # Additional step-specific metadata
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    session = relationship("ResearchSession", back_populates="agent_activities")
 
 
 class ResearchMetadata(Base):
